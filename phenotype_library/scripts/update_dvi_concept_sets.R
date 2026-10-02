@@ -5,12 +5,13 @@
 # WHAT THIS IS
 # ------------
 # ONE-OFF, EXPLICITLY-INVOKED writer that UPDATES the item list of an EXISTING
-# `[DVI]`-prefixed ATLAS concept set so it matches its `phenotype_library/catalog.yaml`
-# entry. The companion to push_dvi_concept_sets.R, which only ever CREATES and
-# skips any name that already exists — meaning a catalog change to an
-# already-pushed set previously had no path to ATLAS at all. That gap is why
-# `minor_amputation` (1890933) and `major_amputation` (1890864) were left
-# `alignment_status: LOCAL AHEAD OF ATLAS` on 2026-08-06.
+# label-prefixed ATLAS concept set (see ATLAS_LABEL_PREFIX below — "[DVI]" is
+# just this template's placeholder, use your own lab's label) so it matches
+# its `phenotype_library/catalog.yaml` entry. The companion to
+# push_dvi_concept_sets.R, which only ever CREATES and skips any name that
+# already exists — meaning a catalog change to an already-pushed set would
+# otherwise have no path to ATLAS at all, leaving that entry's
+# `alignment_status` stuck at "LOCAL AHEAD OF ATLAS".
 #
 # WHY IT IS MORE GUARDED THAN THE CREATE PATH
 # -------------------------------------------
@@ -31,21 +32,23 @@
 # --------------------
 #   * Dry-run is the DEFAULT. Writes happen only with --commit.
 #   * --only is MANDATORY. No target defaults, no wildcards.
-#   * The live ATLAS name must literally start with "[DVI]" — refused otherwise.
-#     This is checked against the LIVE name fetched from WebAPI, not the catalog,
-#     so a mistyped id cannot slip through on a catalog-side name.
+#   * The live ATLAS name must literally start with ATLAS_LABEL_PREFIX —
+#     refused otherwise. This is checked against the LIVE name fetched from
+#     WebAPI, not the catalog, so a mistyped id cannot slip through on a
+#     catalog-side name.
 #   * The catalog entry must be `status: verified`.
-#   * The entry must carry an external_alignment DVI_ATLAS concept_set id — the
-#     script never guesses which ATLAS set an entry corresponds to.
+#   * The entry must carry an external_alignment entry tagged ATLAS_SOURCE_TAG
+#     concept_set id — the script never guesses which ATLAS set an entry
+#     corresponds to.
 #   * Refuses an empty desired item list.
 #   * Names are NOT changed unless --rename is passed; a mismatch is reported.
 #     Renaming can break references held elsewhere, so it is opt-in.
 #
 # USAGE
 # -----
-#   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only minor_amputation
-#   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only minor_amputation,major_amputation
-#   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only minor_amputation --commit
+#   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only example_phenotype
+#   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only example_phenotype,another_entry
+#   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only example_phenotype --commit
 #   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only x --with-exclusions --commit
 #   Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only x --rename --commit
 #
@@ -64,8 +67,9 @@
 suppressWarnings(suppressMessages({ library(yaml); library(jsonlite) }))
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-BASE_URL   <- "https://atlas-demo.ohdsi.org/WebAPI"
-DVI_PREFIX <- "[DVI]"
+BASE_URL           <- "https://atlas-demo.ohdsi.org/WebAPI"  # public OHDSI demo instance; point at your own if you have one
+ATLAS_LABEL_PREFIX <- "[DVI]"      # TODO: replace with your own lab's label, e.g. "[MYLAB]"
+ATLAS_SOURCE_TAG   <- "DVI_ATLAS"  # TODO: matches external_alignment.source in catalog.yaml — keep in sync
 UPDATED_MAP <- "/tmp/dvi_updated.json"
 STAMP      <- format(Sys.time(), "%Y%m%dT%H%M%S")
 
@@ -80,7 +84,7 @@ if (length(ONLY) == 0) {
   cat("\n*** REFUSED: --only <entry_id[,entry_id...]> is mandatory.\n",
       "    This script UPDATES existing ATLAS concept sets in place, which\n",
       "    replaces their item lists. There is deliberately no bulk mode.\n\n",
-      "    Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only minor_amputation\n\n", sep = "")
+      "    Rscript phenotype_library/scripts/update_dvi_concept_sets.R --only example_phenotype\n\n", sep = "")
   quit(status = 1)
 }
 
@@ -140,7 +144,7 @@ curl_json <- function(method, url, body_file = NULL) {
 # The ATLAS concept_set id recorded on the entry. Never inferred.
 entry_dvi_id <- function(e) {
   for (al in e$external_alignment %||% list()) {
-    if (identical(al$source, "DVI_ATLAS") && identical(al$type, "concept_set")) {
+    if (identical(al$source, ATLAS_SOURCE_TAG) && identical(al$type, "concept_set")) {
       id <- suppressWarnings(as.integer(al$id))
       if (!is.na(id)) return(id)
     }
@@ -208,14 +212,14 @@ for (eid in ONLY) {
   }
   dvi_id <- entry_dvi_id(e)
   if (is.na(dvi_id)) {
-    cat("  REFUSED: no external_alignment DVI_ATLAS concept_set id on this entry.\n",
+    cat(sprintf("  REFUSED: no external_alignment %s concept_set id on this entry.\n", ATLAS_SOURCE_TAG),
         "           Use push_dvi_concept_sets.R to CREATE it first.\n", sep = ""); next
   }
 
   live <- fetch_set(dvi_id)
-  if (!startsWith(live$name %||% "", DVI_PREFIX)) {
+  if (!startsWith(live$name %||% "", ATLAS_LABEL_PREFIX)) {
     cat(sprintf("  REFUSED: live ATLAS name for %d is %s — does not start with '%s'.\n",
-                dvi_id, dQuote(live$name %||% "<none>"), DVI_PREFIX)); next
+                dvi_id, dQuote(live$name %||% "<none>"), ATLAS_LABEL_PREFIX)); next
   }
 
   # Always back up before doing anything, dry run included.
@@ -263,7 +267,7 @@ for (eid in ONLY) {
       nm[[as.character(added$conceptId[i])]] %||% "?"))
   }
 
-  cat_name <- sanitize_name(paste(DVI_PREFIX, e$name))
+  cat_name <- sanitize_name(paste(ATLAS_LABEL_PREFIX, e$name))
   if (!identical(cat_name, live$name)) {
     cat(sprintf("  NAME     : live %s\n             catalog %s\n", dQuote(live$name), dQuote(cat_name)))
     cat(sprintf("             %s\n", if (RENAME) "will be RENAMED (--rename)" else
@@ -284,7 +288,7 @@ if (!COMMIT) {
 if (length(actionable) == 0) { cat("\nNothing to do.\n"); quit(status = 0) }
 
 # ---- commit ----------------------------------------------------------------
-cat(sprintf("\nUpdating %d [DVI] concept set(s) on %s ...\n", length(actionable), BASE_URL))
+cat(sprintf("\nUpdating %d label-tagged concept set(s) on %s ...\n", length(actionable), BASE_URL))
 results <- list(); failures <- 0L
 for (p in actionable) {
   if (RENAME && !identical(p$cat_name, p$name)) {

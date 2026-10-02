@@ -38,7 +38,10 @@ CLAUDE.md
 
 # --- scripts ---
 scripts
-phenotype_library/scripts
+phenotype_library/scripts/check_pl.R
+phenotype_library/scripts/lookup_catalog.R
+phenotype_library/scripts/check_overlap.R
+phenotype_library/scripts/regenerate_readme_table.R
 synthetic_data/scripts
 synthetic_data/README.md
 osf/osf_sync.R
@@ -49,6 +52,16 @@ osf/osf_wiki_update.R
 # catalog.yaml (via phenotype_library/scripts/regenerate_readme_table.R) —
 # syncing the file verbatim would carry one repo's catalog entries into the
 # other. Regenerate it locally after editing catalog.yaml instead.
+#
+# NOTE: phenotype_library/scripts/{check_dvi,fetch_dvi_members,
+# push_dvi_concept_sets,update_dvi_concept_sets,rename_dvi_conceptset}.R are
+# ALSO deliberately excluded from the directory sync above (listed
+# individually instead of using the whole `phenotype_library/scripts`
+# directory). Each has an ATLAS label-prefix (e.g. this lab's own "[DVI]"
+# convention) and source-tag baked into its matching logic — the CORRECT
+# value is inherently different per lab, so these five scripts are expected
+# to diverge between this repo and charon, not stay byte-identical. Edit
+# each repo's copy independently.
 
 # --- docs ---
 docs/ANALYST_PLAYBOOK.md

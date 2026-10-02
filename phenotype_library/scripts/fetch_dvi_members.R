@@ -5,10 +5,11 @@
 # PURPOSE
 # -------
 # Read-only helper for push_dvi_concept_sets.R. Fetches the INCLUDED concept-id
-# membership of every existing [DVI] concept set listed in dvi_index.yaml and
-# caches it to MEMBERS_CACHE (/tmp/dvi_members.json). push_dvi_concept_sets.R
-# uses that cache to skip any catalog entry whose concepts are already covered
-# by an existing [DVI] set (concept-based de-duplication).
+# membership of every existing label-tagged concept set listed in
+# dvi_index.yaml and caches it to MEMBERS_CACHE (/tmp/dvi_members.json).
+# push_dvi_concept_sets.R uses that cache to skip any catalog entry whose
+# concepts are already covered by an existing tagged set (concept-based
+# de-duplication).
 #
 # Excluded concepts (isExcluded == 1) are intentionally dropped so a carve-out
 # (e.g. Major Amputation's Syme/Pirogoff exclusions) does not inflate overlap.
@@ -49,4 +50,4 @@ for (s in sets) {
   cat(sprintf("  %-9d %-55s n=%d\n", s$id, s$name, length(cids)))
 }
 writeLines(toJSON(out, auto_unbox = TRUE), MEMBERS_CACHE)
-cat(sprintf("\nWrote membership for %d [DVI] concept sets to %s\n", length(out), MEMBERS_CACHE))
+cat(sprintf("\nWrote membership for %d label-tagged concept sets to %s\n", length(out), MEMBERS_CACHE))

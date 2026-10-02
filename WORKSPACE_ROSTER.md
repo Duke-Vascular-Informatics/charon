@@ -20,7 +20,7 @@ another.**
 | `/` (workspace root) | git repo | `my-org/my-omop-dev-workspace` |
 | `synthea-omop-template/` | git submodule | `Duke-Vascular-Informatics/synthea-omop-template` |
 | `omop-etl-template/` | git submodule | `Duke-Vascular-Informatics/omop-etl-template` |
-| `strategus-study-template/` | git submodule | `Duke-Vascular-Informatics/strategus-study-template` (scaffold for bucket-2 analysis-core repos; supersedes `synthea-omop-template` for new studies) |
+| `strategus-study-template/` | git submodule | `Duke-Vascular-Informatics/strategus-study-template` (scaffold for bucket-2 analysis-core repos that don't need in-repo synthetic-data generation) |
 | `omop-report-template/` | git submodule | `Duke-Vascular-Informatics/omop-report-template` (scaffold for bucket-3b `<study>-report` repos) |
 | `my-study-desc/` | git repo | `my-org/my-study-desc` (placeholder study — replace with your own repos) |
 

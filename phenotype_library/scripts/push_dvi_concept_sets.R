@@ -4,27 +4,33 @@
 #
 # PURPOSE
 # -------
-# ONE-OFF, EXPLICITLY-INVOKED writer that creates [DVI]-prefixed concept sets
-# on the public OHDSI ATLAS demo WebAPI (security disabled -> anonymous write)
-# from status:verified entries in phenotype_library/catalog.yaml that do not
-# already have a [DVI] counterpart.
+# ONE-OFF, EXPLICITLY-INVOKED writer that creates label-prefixed concept sets
+# (see ATLAS_LABEL_PREFIX below — "[DVI]" here is just this template's
+# placeholder; use your own lab's label) on a shared OHDSI ATLAS WebAPI
+# (the public demo instance has security disabled -> anonymous write; a
+# private instance would need its own auth handled separately) from
+# status:verified entries in phenotype_library/catalog.yaml that do not
+# already have a tagged counterpart.
 #
 # This is the "deliberate, separate, one-off ATLAS-write action" that
 # catalog.yaml / check_dvi.R describe. It is NOT wired into any search /
 # refresh / sync path — it runs only when a human runs it directly, and it
 # HARD-REFUSES to create anything whose target name does not literally start
-# with "[DVI]".
+# with ATLAS_LABEL_PREFIX.
 #
 # SAFETY GUARDS
 # -------------
 #   * Dry-run is the DEFAULT. Writes happen only with --commit.
-#   * Every target name must start with "[DVI]" or that entry is refused
-#     (checked at plan time AND again immediately before each write).
+#   * Every target name must start with ATLAS_LABEL_PREFIX or that entry is
+#     refused (checked at plan time AND again immediately before each write).
 #   * Duplicate protection is CONCEPT-BASED, not name-based: an entry is
 #     skipped if >= DUP_FRAC of its concept ids are already covered by an
-#     existing [DVI] concept set (per MEMBERS_CACHE from fetch_dvi_members.R),
-#     or if a [DVI] set with the exact target name already exists.
-#   * Analytic building-block entries (BUILD_BLOCKS below) are excluded.
+#     existing tagged concept set (per MEMBERS_CACHE from
+#     fetch_dvi_members.R), or if a tagged set with the exact target name
+#     already exists.
+#   * Analytic building-block entries (BUILD_BLOCKS below) are excluded —
+#     replace the placeholder list with your own catalog's internal-scaffold
+#     entry ids, if any.
 #   * Entries with a structured `exclusion_concept_sets:` field are DEFERRED
 #     by default (see --with-exclusions to create them WITH their exclusions).
 #
@@ -48,20 +54,19 @@
 suppressWarnings(suppressMessages({ library(yaml); library(jsonlite) }))
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-BASE_URL      <- "https://atlas-demo.ohdsi.org/WebAPI"
-DVI_PREFIX    <- "[DVI]"
-DUP_FRAC      <- 0.5   # skip if >= this fraction of a candidate's concepts already in a [DVI] set
+BASE_URL           <- "https://atlas-demo.ohdsi.org/WebAPI"  # public OHDSI demo instance; point at your own if you have one
+ATLAS_LABEL_PREFIX <- "[DVI]"  # TODO: replace with your own lab's label, e.g. "[MYLAB]"
+DUP_FRAC      <- 0.5   # skip if >= this fraction of a candidate's concepts already in a tagged set
 MEMBERS_CACHE <- "/tmp/dvi_members.json"
 CREATED_MAP   <- "/tmp/dvi_created.json"
 CHECKED_DATE  <- format(Sys.Date(), "%Y-%m-%d")
 
-# Analytic building-blocks: granular scaffolding, not standalone phenotypes.
+# Analytic building-blocks: granular scaffolding, not standalone phenotypes —
+# excluded from push since they aren't meant to become their own ATLAS sets.
+# Placeholder example below; replace with your own catalog's internal-scaffold
+# entry ids (or an empty vector if you have none).
 BUILD_BLOCKS <- c(
-  "eler_anatomy_aortoiliac", "eler_anatomy_femoropopliteal",
-  "eler_anatomy_tibioperoneal", "eler_anatomy_inframalleolar",
-  "eler_intervention_angioplasty", "eler_intervention_stent",
-  "eler_intervention_atherectomy", "eler_intervention_ivl",
-  "oler_procedure_subtypes", "ssi_culture_organism_class"
+  "example_building_block"
 )
 
 args      <- commandArgs(trailingOnly = TRUE)
@@ -184,15 +189,15 @@ for (e in cat_y$entries %||% list()) {
   id <- e$id %||% "?"
   if (!is.null(ONLY) && !(id %in% ONLY)) next
   if ((e$status %||% "") != "verified")  next
-  if (startsWith(id, "cohort_dvi_"))     next
+  if (startsWith(id, "cohort_atlas_tagged_")) next  # id convention for entries that already mirror a tagged ATLAS cohort
   if (!entry_has_own_conceptset(e))      next
   cids   <- entry_concept_ids(e)
-  target <- paste0(DVI_PREFIX, " ", sanitize_name(e$name %||% id))
+  target <- paste0(ATLAS_LABEL_PREFIX, " ", sanitize_name(e$name %||% id))
   dup    <- best_dup(cids)
   excl   <- has_structured_exclusions(e)
 
   action <- "CREATE"; detail <- ""
-  if (!startsWith(target, DVI_PREFIX))                  { action <- "REFUSE-nonDVI" }
+  if (!startsWith(target, ATLAS_LABEL_PREFIX))          { action <- "REFUSE-wrong-prefix" }
   else if (id %in% BUILD_BLOCKS)                         { action <- "skip-buildblock" }
   else if (tolower(trimws(target)) %in% existing_names) { action <- "skip-existing-name" }
   else if (!is.null(dup) && dup$frac >= DUP_FRAC)       { action <- "skip-existing-concepts"
@@ -213,7 +218,7 @@ cat(sprintf("\n%s%s — %d verified concept-set entries in scope\n",
             if (WITH_EXCL) " [--with-exclusions]" else "", length(rows)))
 cat(strrep("=", 78), "\n")
 for (a in c("CREATE", "DEFER-exclusions", "skip-existing-concepts", "skip-existing-name",
-            "skip-buildblock", "REFUSE-nonDVI")) {
+            "skip-buildblock", "REFUSE-wrong-prefix")) {
   grp <- by(a)
   if (length(grp)) { cat(sprintf("\n%s (%d):\n", a, length(grp))); for (r in grp) cat(fmt(r), "\n") }
 }
@@ -226,10 +231,10 @@ if (!COMMIT) { cat("\nDry run only. Re-run with --commit to create the CREATE ro
 
 # ---- commit ----------------------------------------------------------------
 if (!is.na(LIMIT)) creates <- head(creates, LIMIT)
-cat(sprintf("\nCreating %d [DVI] concept set(s) on %s ...\n", length(creates), BASE_URL))
+cat(sprintf("\nCreating %d label-tagged concept set(s) on %s ...\n", length(creates), BASE_URL))
 results <- list()
 for (r in creates) {
-  if (!startsWith(r$target, DVI_PREFIX)) { cat(sprintf("  REFUSED (non-[DVI]): %s\n", r$target)); next }
+  if (!startsWith(r$target, ATLAS_LABEL_PREFIX)) { cat(sprintf("  REFUSED (wrong prefix): %s\n", r$target)); next }
   res <- tryCatch(create_concept_set(r$target, build_items(r$entry, r$with_excl)),
                   error = function(e) { cat(sprintf("  ERROR %s: %s\n", r$id, conditionMessage(e))); NULL })
   if (!is.null(res)) {
