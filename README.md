@@ -479,3 +479,12 @@ concept IDs, codes, and names.
   `synthea-omop-template`, `omop-etl-template`, `strategus-study-template`,
   `omop-report-template` — and the broader [OHDSI](https://www.ohdsi.org/)
   / [HADES](https://ohdsi.github.io/Hades/) ecosystem this workspace builds on.
+
+### Early testers
+
+Thanks to the following people for early testing and feedback that shaped
+charon, ahead of its public release — they did not contribute code directly,
+but their input improved the software:
+
+Ayman Ali, Sasank Kalipatnapu, Shoaib Siddiqui, Junette Yu, Kyle Ge,
+Evan Minty, Leila Mureebe, Logan Couce.

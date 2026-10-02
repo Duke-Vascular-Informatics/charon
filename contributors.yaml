@@ -46,6 +46,122 @@ contributors:
           - project-administration
           - supervision
 
+  - family_names: Ali
+    given_names: "Ayman"
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "Duke University School of Medicine"
+        city: Durham
+        region: NC
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+
+  - family_names: Kalipatnapu
+    given_names: "Sasank"
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "University of Massachusetts Chan Medical School"
+        city: Worcester
+        region: MA
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+
+  - family_names: Siddiqui
+    given_names: "Shoaib"
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "Lake Erie College of Osteopathic Medicine"
+        city: Erie
+        region: PA
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+
+  - family_names: Yu
+    given_names: "Junette"
+    name_suffix: "BS"
+    orcid: "https://orcid.org/0000-0003-1161-5265"
+    email: junette.yu@duke.edu
+    affiliations:
+      - name: "Duke University School of Medicine"
+        city: Durham
+        region: NC
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+
+  - family_names: Ge
+    given_names: "Kyle"
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "Duke University School of Medicine"
+        city: Durham
+        region: NC
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+    notes: "Medical student."
+
+  - family_names: Minty
+    given_names: "Evan"
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "University of Calgary"
+        city: Calgary
+        region: AB
+        country: CA
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+
+  - family_names: Mureebe
+    given_names: "Leila"
+    # name_suffix: ""         # TODO: add degree/suffix if applicable
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "Duke University School of Medicine, Department of Surgery"
+        city: Durham
+        region: NC
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+    notes: "Professor of Surgery."
+
+  - family_names: Couce
+    given_names: "Logan"
+    # email: ""               # TODO: add institutional email
+    # orcid: ""               # TODO: add if available
+    affiliations:
+      - name: "Duke University"
+        city: Durham
+        region: NC
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - validation
+
 # =============================================================================
 # TEMPLATE — copy from here when adding a new contributor
 # -----------------------------------------------------------------------------
