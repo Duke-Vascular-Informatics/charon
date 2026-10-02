@@ -141,7 +141,7 @@ flowchart TB
 |---|---|
 | No PHI in central repo | Dev & CI always run against Synthea synthetic data |
 | Reproducible environments | Dev container pinned via `renv.lock` and `Dockerfile` |
-| Portable to air-gapped sites | `workflow/09` builds a self-contained bundle with no live dependencies |
+| Portable to air-gapped sites | Each analysis-core template's own bundle-building step packages code + pinned dependencies for transport, with no live dependencies at the destination |
 | Shared concept sets | `phenotype_library/catalog.yaml` distributes verified concept IDs to all sites |
 | Shared synthetic datasets | `synthetic_data/registry.yaml` lets studies reuse a disease/procedure/outcome-specific dataset without redistributing vocabulary |
 | Multi-site synthesis | Each site returns only aggregate statistics; `EvidenceSynthesis` combines them |
@@ -162,17 +162,27 @@ was discovered).
 | # | Role | Repo name | Template | Contents |
 |---|---|---|---|---|
 | 1 | synth | `<study>-synth` | `synthea-omop-template` | Synthea module + Steps 1–6 only, for one reusable synthetic OMOP CDM dataset. Registered in `synthetic_data/registry.yaml`. Never answers a research question. |
-| 2 | analysis-core | `<study>` | [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) (current) or `synthea-omop-template` (legacy) | Cohorts, analysis spec, the extract layer that turns CDM queries into result CSVs. Must be shareable with any institution — no report code, no PHI. |
+| 2 | analysis-core | `<study>` | [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) (no in-repo synthetic-data generation) or `synthea-omop-template` (needs Synthea generation + ETL + QC alongside the analysis) | Cohorts, analysis spec, the extract layer that turns CDM queries into result CSVs. Must be shareable with any institution — no report code, no PHI. |
 | 3 | report-toolkit | `<your-org>-report-toolkit` | — (singleton, not scaffolded per-study) | Generic figure/table helpers shared across every report repo. Nothing study-specific. |
 | 3b | report-repo | `<study>-report` | [`omop-report-template`](https://github.com/Duke-Vascular-Informatics/omop-report-template) | One study's Word manuscript composition — which tables, which figures, the narrative — rendered from bucket 2's result artifacts only. No database, no VPN, no credentials. |
-| 4 | site-deploy | `<your-site>-deploy` | — (not on GitHub; typically a private, institution-hosted repo) | Bundle builder and site-specific deployment config. |
+| 4 | site-deploy | `<your-site>-deploy` | — (not on GitHub; typically a private, institution-hosted repo) | Turns the analysis-core repo's portable bundle into a form your secure environment can actually run: applies site-specific config (schema names, connection details), handles whatever handoff mechanism your institution requires (an internal Git host, a manual file transfer, a change-control ticket), and is the one place PHI-adjacent exports or site credentials are allowed to live — never in the analysis-core or report repos. |
+
+**Site-deploy is intentionally the least standardized bucket.** Unlike the
+other three, there's no shared template for it — every institution's secure
+environment and governance process is different. What stays constant is the
+*shape*: your analysis-core template produces a self-contained bundle (code
++ pinned dependencies, no live network calls required), and site-deploy is
+whatever you build to get that bundle running against your real CDM. Keep it
+in its own repo, separate from the analysis-core and report repos, so a
+site-specific credential or a PHI-producing export script never ends up in
+something you'd otherwise publish or share with a collaborating institution.
 
 **Which template for a new study's analysis core?** Use
 `strategus-study-template` unless the study needs the numbered
 `workflow/01–09` scaffold (Synthea generation + ETL + QC in the same repo as
-the analysis) — that path is legacy, kept for studies already built on it and
-for the `-synth` convention. See `strategus-study-template`'s own README for
-the two-path decision in more detail.
+the analysis) — that's `synthea-omop-template`'s purpose, and also what the
+`-synth` convention is built on. See `strategus-study-template`'s own README
+for the two-path decision in more detail.
 
 **Every new study also gets a report repo.** Even a purely descriptive study
 that will only ever produce tables and figures for a manuscript should create
@@ -216,7 +226,7 @@ charon/
 ├── synthetic_data/               # Shared synthetic OMOP CDM dataset registry (placeholder)
 ├── osf/                          # OSF protocol hosting registry + sync scripts (placeholder)
 │
-├── synthea-omop-template/        # Legacy study template (git submodule) — workflow/01-09, still current for -synth repos
+├── synthea-omop-template/        # Synthetic-data-generation study template (git submodule) — workflow/01-09, used by -synth repos
 ├── omop-etl-template/            # ETL template — copy this for each new registry data source (git submodule)
 ├── strategus-study-template/     # Strategus/circe analysis-core template (git submodule)
 └── omop-report-template/         # Bucket 3b report-repo template (git submodule)
@@ -260,7 +270,7 @@ declarative circe cohort definitions executed by OHDSI Strategus:
 - `StrategusCodeToRun.R` — runs it against the CDM
 - `config.R` / `study_params.yaml` — optional and minimal; most studies need neither
 
-**[`synthea-omop-template`](https://github.com/Duke-Vascular-Informatics/synthea-omop-template) (legacy, still current for `-synth` repos)** —
+**[`synthea-omop-template`](https://github.com/Duke-Vascular-Informatics/synthea-omop-template) (for synthetic-data generation and `-synth` repos)** —
 imperative R + numbered workflow steps:
 
 - `study_params.yaml` — study identity, cohort definitions, concept IDs, analysis flags

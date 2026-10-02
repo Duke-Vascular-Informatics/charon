@@ -58,6 +58,12 @@ resolve_workspace_root <- function() {
 
 workspace_root <- resolve_workspace_root()
 dry_run <- "--dry-run" %in% commandArgs(trailingOnly = TRUE)
+# Optional --study=<dir> scopes a run to one study, so a rendering change
+# aimed at one study's page doesn't silently rewrite every other study's
+# already-existing wiki in the same run.
+study_filter <- sub("^--study=", "",
+                    grep("^--study=", commandArgs(trailingOnly = TRUE), value = TRUE))
+study_filter <- if (length(study_filter) == 1) study_filter else NULL
 
 state <- read_csv(file.path(workspace_root, "osf", "osf_projects.csv"),
                   col_types = cols(.default = col_character()))
@@ -122,6 +128,90 @@ pipeline_preamble <- paste(
   "5. Results-schema preparation and cohort instantiation from the SQL definitions in `cohorts/`",
   sep = "\n")
 
+# Renders an "## Investigators" section from the workspace-root
+# contributors.yaml (the same source scripts/sync_contributors.R reads to
+# generate each repo's own CONTRIBUTORS.md / CITATION.cff), filtered to
+# contributors who list this study_dir -- or the wildcard "*" -- under
+# their own `repos`. Returns "" (not NULL) when the registry is missing or
+# no entry applies, so callers can paste0() it unconditionally.
+render_investigators <- function(study_dir) {
+  contrib_path <- file.path(workspace_root, "contributors.yaml")
+  if (!file.exists(contrib_path)) return("")
+  reg <- tryCatch(yaml::read_yaml(contrib_path), error = function(e) NULL)
+  people <- reg$contributors
+  if (is.null(people)) return("")
+
+  rows <- character(0)
+  for (person in people) {
+    repo_entry <- NULL
+    for (r in person$repos %||% list()) {
+      if (identical(r$repo, study_dir) || identical(r$repo, "*")) {
+        repo_entry <- r
+        if (identical(r$repo, study_dir)) break  # study-specific beats "*"
+      }
+    }
+    if (is.null(repo_entry)) next
+
+    name <- trimws(paste(person$given_names %||% "", person$family_names %||% ""))
+    if (!is.null(person$name_suffix) && nzchar(person$name_suffix)) {
+      name <- paste0(name, ", ", person$name_suffix)
+    }
+    affils <- vapply(person$affiliations %||% list(), function(a) a$name %||% "",
+                     character(1))
+    affils <- paste(affils[nzchar(affils)], collapse = "; ")
+    roles <- paste(unlist(repo_entry$credit %||% list()), collapse = ", ")
+    rows <- c(rows, paste0("| ", name, " | ", affils, " | ", roles, " |"))
+  }
+  if (length(rows) == 0) return("")
+
+  paste0("\n## Investigators\n\n",
+        "| Name | Affiliation(s) | Role(s) on this study |\n",
+        "|---|---|---|\n", paste(rows, collapse = "\n"), "\n")
+}
+
+# For a study whose protocol is authored directly as docs/PROTOCOL.md
+# (Strategus-based studies -- study_params.yaml there doesn't carry the
+# legacy cohorts/sql_file/analyses: shape this script's generic cohort/
+# pipeline rendering below expects, so forcing that rendering onto them
+# produces confidently wrong text, e.g. "no analysis blocks enabled" for a
+# study whose analysis already ran to completion). Extracts the protocol's
+# own "1. Background and Rationale" and "2. Objectives" sections verbatim
+# (the one heading pair confirmed consistent across every current
+# docs/PROTOCOL.md) as the page body, rather than re-deriving a summary
+# that could drift out of sync with the protocol.
+render_from_protocol <- function(study_dir) {
+  protocol_rel <- "docs/PROTOCOL.md"
+  protocol_path <- file.path(workspace_root, study_dir, protocol_rel)
+  if (!file.exists(protocol_path)) return(NULL)
+
+  lines <- readLines(protocol_path, warn = FALSE)
+  start <- grep("^##\\s*1\\.", lines)[1]
+  end   <- grep("^##\\s*3\\.", lines)[1]
+  if (is.na(start)) return(NULL)
+  body_lines <- if (!is.na(end) && end > start) lines[start:(end - 1)] else lines[start:length(lines)]
+  body <- paste(trimws(body_lines, which = "right"), collapse = "\n")
+
+  # Regulatory/IRB coverage is matched by heading TEXT, not a fixed section
+  # number -- it is Section 10 in one protocol and Section 11 in another,
+  # and matching on wording is more robust than assuming a number stays
+  # put as a protocol's own sections get inserted/renumbered over time.
+  reg_start <- grep("^##\\s*[0-9]+\\.\\s*Regulatory and Ethical Considerations", lines)[1]
+  reg_block <- if (!is.na(reg_start)) {
+    reg_end <- grep("^## ", lines)[grep("^## ", lines) > reg_start][1]
+    reg_lines <- if (!is.na(reg_end)) lines[reg_start:(reg_end - 1)] else lines[reg_start:length(lines)]
+    paste0(paste(trimws(reg_lines, which = "right"), collapse = "\n"), "\n\n")
+  } else ""
+
+  paste0(
+    trimws(body), "\n\n",
+    reg_block,
+    "_Full study design, data source, population, analysis plan, and ",
+    "limitations are in the attached `PROTOCOL.md` (under Files) -- summarized ",
+    "here are only its Background/Objectives and Regulatory/Ethical ",
+    "Considerations sections, kept intentionally unparaphrased so this page ",
+    "cannot drift out of sync with the protocol it is drawn from._\n")
+}
+
 # Renders one study's wiki markdown from its study_params.yaml; returns a
 # minimal registry-based page when the study has no params file (e.g. an
 # externally managed Strategus repo that doesn't carry that file).
@@ -148,13 +238,32 @@ render_wiki <- function(study_dir) {
     "Protocol documents are attached under Files; this page is generated from the ",
     "study repository and updated by `osf/osf_wiki_update.R`.\n")
 
+  investigators_md <- render_investigators(study_dir)
+
+  protocol_body <- render_from_protocol(study_dir)
+  if (!is.null(protocol_body)) {
+    design_rows_protocol <- if (file.exists(params_path)) {
+      pp <- yaml::read_yaml(params_path)
+      c(
+        if (!is.null(pp$study_design)) paste0("| Study design | ", pp$study_design, " |"),
+        if (!is.null(pp$study_start_date) && !is.null(pp$study_end_date))
+          paste0("| Study period | ", pp$study_start_date, " to ", pp$study_end_date, " |"))
+    } else character(0)
+    design_block <- if (length(design_rows_protocol) > 0) {
+      paste0("## Study design\n\n| | |\n|---|---|\n",
+            paste(design_rows_protocol, collapse = "\n"), "\n\n")
+    } else ""
+    return(paste0(header, "\n", design_block, protocol_body, investigators_md))
+  }
+
   if (!file.exists(params_path)) {
     return(paste0(
       header, "\n",
       "This study is managed in an external network-study repository ",
       "(see the workspace registry); study parameters and analysis code live ",
       "upstream rather than in a local `study_params.yaml`. The attached ",
-      "protocol documents are the authoritative description.\n"))
+      "protocol documents are the authoritative description.\n",
+      investigators_md))
   }
 
   p <- yaml::read_yaml(params_path)
@@ -251,6 +360,7 @@ render_wiki <- function(study_dir) {
     "All analyses run on an OMOP CDM v5.4 database via the OHDSI HADES ",
     "toolstack, driven entirely by `study_params.yaml`:\n\n",
     pipeline_preamble, "\n", analysis_lines, "\n",
+    investigators_md,
     "\n---\n_Generated from `study_params.yaml` and ",
     "`workflow/08_run_analysis_and_manuscript_report.R` on ",
     format(Sys.Date()), "._\n")
@@ -298,6 +408,10 @@ wiki_dir <- file.path(workspace_root, "osf", "wiki")
 dir.create(wiki_dir, showWarnings = FALSE)
 
 targets <- state |> filter(!is.na(osf_guid), nzchar(osf_guid))
+if (!is.null(study_filter)) {
+  targets <- targets |> filter(study_dir == study_filter)
+  if (nrow(targets) == 0) stop("No OSF-registered study matches --study=", study_filter)
+}
 
 for (i in seq_len(nrow(targets))) {
   study <- targets$study_dir[i]

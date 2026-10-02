@@ -108,11 +108,16 @@ If a match is found, record `ohdsi_pl_id` and `ohdsi_pl_checked` in
 This is "check and cite if found" — a local definition MAY still differ from
 a published PL phenotype.
 
-**Tier 1b — `[DVI]`-prefixed ATLAS cohorts/concept sets — AUTHORITATIVE**
+**Tier 1b — label-tagged ATLAS cohorts/concept sets — AUTHORITATIVE**
 
-Cohorts and concept sets named `[DVI] ...` on the public ATLAS demo instance
-(atlas-demo.ohdsi.org) are treated as authoritative for this workspace: a
-local definition should converge to its `[DVI]` counterpart, and any
+Before using this tier, pick (or confirm) a standing, lab-specific label —
+a short prefix like `[DVI]` or `[MYLAB]` — and apply it consistently to
+every cohort/concept set your lab publishes on its chosen ATLAS instance
+(this workspace's own choice of label and instance is recorded in
+`phenotype_library/catalog.yaml`'s alignment header comment, not here, since
+it's workspace-specific rather than a generic rule). Cohorts and concept
+sets carrying that label are treated as authoritative for this workspace: a
+local definition should converge to its tagged counterpart, and any
 deliberate difference must be documented as an exception (`alignment_status`
 field), not silently diverged from. This is a stronger rule than Tier 1a.
 
@@ -123,12 +128,13 @@ Rscript phenotype_library/scripts/check_dvi.R --cohort-id <id> --save <path>
 Rscript phenotype_library/scripts/check_dvi.R --concept-set-id <id> --save <path>
 ```
 
-See `phenotype_library/catalog.yaml`'s `[DVI] ALIGNMENT` header comment for
-the full field reference (`external_alignment`, `alignment_status`). This
-tooling is **read-only** — nothing in this workspace writes to ATLAS. Any
-future push-back to a `[DVI]` entry is a separate, explicit, one-off action
-taken only when asked for by name, and must refuse any target whose name
-does not literally start with `[DVI]`.
+See `phenotype_library/catalog.yaml`'s alignment header comment for the full
+field reference (`external_alignment`, `alignment_status`) and this
+workspace's specific label/instance choice. This tooling is **read-only** —
+nothing in this workspace writes to ATLAS by default. Any future push-back
+to a tagged entry is a separate, explicit, one-off action taken only when
+asked for by name, and must refuse any target whose name does not literally
+start with the workspace's chosen label.
 
 **Tier 2 — Local phenotype catalog** (check before running a vocab query)
 

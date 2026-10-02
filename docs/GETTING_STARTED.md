@@ -37,7 +37,7 @@ active internet
 > **Steps 1–9 are the same regardless of which study template you end up
 > using.** Step 10 is where the path branches — see
 > [Step 10.0: Choose Your Templates](#step-100-choose-your-templates-and-create-your-repos)
-> below. This guide documents the legacy `synthea-omop-template` path
+> below. This guide documents the `synthea-omop-template` path
 > (Steps 10–11) in full, because it is still the most detailed
 > reference for the underlying OMOP concepts (cohorts, covariates, vocabulary
 > lookup) even for a study built on `strategus-study-template` instead — that
@@ -539,10 +539,10 @@ manuscript, built from those results). See `README.md`'s
 | Template | Use when |
 |---|---|
 | [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) **(default for new studies)** | Cohort logic can be expressed as declarative circe cohort definitions run by OHDSI Strategus. Has its own `CHECKLIST.md` and `docs/UsingThisTemplate.md` — follow those instead of Steps 10.1–11 below once your repo is created. |
-| `synthea-omop-template` (legacy — this guide covers it in full below) | You need the numbered `workflow/01–09` scaffold in the same repo as the analysis (Synthea generation + ETL + QC alongside the analysis code), or you're building a `-synth` data-generation-only repo. |
+| `synthea-omop-template` (this guide covers it in full below) | You need the numbered `workflow/01–09` scaffold in the same repo as the analysis (Synthea generation + ETL + QC alongside the analysis code), or you're building a `-synth` data-generation-only repo. |
 
 If in doubt, use `strategus-study-template` and read its README's "Lineage"
-and "Quick start" sections — Steps 10.1–11 below are written for the legacy
+and "Quick start" sections — Steps 10.1–11 below are written for the
 `synthea-omop-template` path.
 
 **Report repo — always create one, regardless of which analysis-core
@@ -906,7 +906,7 @@ docker compose up -d
 | `renv.lock` | R package list — restored on container build |
 | `infrastructure/scripts/` | Vocabulary loader and workspace scripts |
 
-**Analysis-core repo (`<your-study>/`, legacy `synthea-omop-template` layout)**
+**Analysis-core repo (`<your-study>/`, `synthea-omop-template` layout)**
 
 | File | Purpose |
 |---|---|

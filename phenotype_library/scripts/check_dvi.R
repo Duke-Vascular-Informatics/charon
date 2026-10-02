@@ -6,12 +6,21 @@
 # -------
 # Tier 1b of the phenotype lookup workflow (runs alongside check_pl.R's Tier 1
 # OHDSI Phenotype Library check, before the local catalog and any live vocab
-# query). Sweeps the public OHDSI ATLAS demo instance for published cohort
-# definitions and concept sets whose name carries the "[DVI]" prefix, which
-# this workspace treats as AUTHORITATIVE: local phenotype/concept-set
-# definitions should converge to their [DVI] counterpart, with any deliberate
-# difference recorded as a documented exception (see the `alignment_status`
-# field convention in catalog.yaml), not silently diverged from.
+# query). Sweeps a shared OHDSI ATLAS instance for published cohort
+# definitions and concept sets whose name carries YOUR LAB'S CHOSEN label
+# prefix (set ATLAS_LABEL_PREFIX below — "[DVI]" in the example below is just
+# this template's placeholder, pick your own and use it consistently). A
+# label-tagged entry is treated as AUTHORITATIVE: local phenotype/concept-set
+# definitions should converge to their tagged counterpart, with any
+# deliberate difference recorded as a documented exception (see the
+# `alignment_status` field convention in catalog.yaml), not silently diverged
+# from.
+#
+# CUSTOMIZE BEFORE USE: set ATLAS_LABEL_PREFIX below to your own lab's label
+# (e.g. "[MYLAB]") and, if you maintain your own ATLAS instance rather than
+# using the public OHDSI demo, ATLAS_BASE_URL too. Keep the choice consistent
+# across this script, push_dvi_concept_sets.R, update_dvi_concept_sets.R, and
+# rename_dvi_conceptset.R — they all key off the same prefix.
 #
 # USAGE
 # -----
@@ -31,15 +40,16 @@
 # HOW THE CACHE WORKS
 # --------------------
 # The first two usages ("<term>" / --list) search a LOCAL, committed snapshot
-# of every [DVI]-prefixed cohort/concept-set NAME + ID (phenotype_library/
+# of every label-prefixed cohort/concept-set NAME + ID (phenotype_library/
 # dvi_index.yaml) — not a live query — because the bulk ATLAS list endpoints
-# return the instance's ENTIRE catalog (~23k cohorts, ~29k concept sets as of
-# 2026-07-18) and re-fetching all of that on every lookup would be slow and
-# unnecessary. Run --refresh periodically (and definitely before relying on
-# an absence — "not found" only means "not in the last refresh") to re-sweep
-# the live instance and rewrite the cache. The cache is a workspace-shared,
-# git-committed file specifically so everyone sees the same DVI snapshot
-# without each having to sweep 50k+ entries themselves.
+# return the instance's ENTIRE catalog (tens of thousands of cohorts/concept
+# sets on the public OHDSI demo instance) and re-fetching all of that on
+# every lookup would be slow and unnecessary. Run --refresh periodically (and
+# definitely before relying on an absence — "not found" only means "not in
+# the last refresh") to re-sweep the live instance and rewrite the cache. The
+# cache is a workspace-shared, git-committed file specifically so everyone
+# sees the same snapshot without each having to sweep tens of thousands of
+# entries themselves.
 #
 # --cohort-id / --concept-set-id fetch the FULL definition for one already-
 # known ID directly from the live API (not the cache) and print/save it as
@@ -50,16 +60,17 @@
 # should be added without a deliberate, separate decision: any future
 # ATLAS-write tool must (a) only run when explicitly invoked for that specific
 # write, never as a side effect of a search/refresh/sync command, and (b)
-# hard-refuse unless the target name literally starts with "[DVI]".
+# hard-refuse unless the target name literally starts with your chosen label
+# prefix.
 #
 # REQUIREMENTS
 # ------------
 # yaml, jsonlite packages. Install once: renv::install(c("yaml", "jsonlite"))
-# Network access to the configured ATLAS instance (DVI_ATLAS_BASE_URL below).
+# Network access to the configured ATLAS instance (ATLAS_BASE_URL below).
 # =============================================================================
 
-DVI_ATLAS_BASE_URL <- "https://atlas-demo.ohdsi.org/WebAPI"
-DVI_PREFIX          <- "[DVI]"
+ATLAS_BASE_URL     <- "https://atlas-demo.ohdsi.org/WebAPI"  # public OHDSI demo instance; point at your own if you have one
+ATLAS_LABEL_PREFIX <- "[DVI]"  # TODO: replace with your own lab's label, e.g. "[MYLAB]"
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
@@ -132,7 +143,7 @@ if (args[1] %in% c("--cohort-id", "--concept-set-id")) {
   if (length(args) >= 4L && args[3] == "--save") save_path <- args[4]
 
   endpoint <- if (args[1] == "--cohort-id") "cohortdefinition" else "conceptset"
-  url <- sprintf("%s/%s/%d", DVI_ATLAS_BASE_URL, endpoint, id)
+  url <- sprintf("%s/%s/%d", ATLAS_BASE_URL, endpoint, id)
   cat(sprintf("[check_dvi] Fetching %s ...\n", url))
   result <- http_get_json(url)
 
@@ -142,13 +153,13 @@ if (args[1] %in% c("--cohort-id", "--concept-set-id")) {
   # than a cohort's embedded ConceptSets[].expression.items[].concept
   # objects. Fetch and attach it so the saved file is self-contained.
   if (args[1] == "--concept-set-id") {
-    items_url <- sprintf("%s/conceptset/%d/items", DVI_ATLAS_BASE_URL, id)
+    items_url <- sprintf("%s/conceptset/%d/items", ATLAS_BASE_URL, id)
     cat(sprintf("[check_dvi] Fetching %s ...\n", items_url))
     result$items <- http_get_json(items_url)
   }
 
   name <- result$name %||% "(unnamed)"
-  is_dvi <- startsWith(trimws(name), DVI_PREFIX)
+  is_dvi <- startsWith(trimws(name), ATLAS_LABEL_PREFIX)
   cat(sprintf("  id   : %d\n", id))
   cat(sprintf("  name : %s%s\n", name, if (is_dvi) "  [DVI-tagged]" else "  *** NOT [DVI]-tagged ***"))
   if (args[1] == "--concept-set-id") {
@@ -168,24 +179,24 @@ if (args[1] %in% c("--cohort-id", "--concept-set-id")) {
 # ---------------------------------------------------------------------------
 if (args[1] == "--refresh") {
   cat(sprintf("[check_dvi] Sweeping %s for \"%s\"-prefixed cohorts and concept sets ...\n",
-              DVI_ATLAS_BASE_URL, DVI_PREFIX))
+              ATLAS_BASE_URL, ATLAS_LABEL_PREFIX))
   cat("  (this pulls the instance's full list — tens of thousands of entries — expect this to take a bit)\n")
 
-  all_cohorts <- http_get_json(paste0(DVI_ATLAS_BASE_URL, "/cohortdefinition"))
-  all_csets   <- http_get_json(paste0(DVI_ATLAS_BASE_URL, "/conceptset"))
+  all_cohorts <- http_get_json(paste0(ATLAS_BASE_URL, "/cohortdefinition"))
+  all_csets   <- http_get_json(paste0(ATLAS_BASE_URL, "/conceptset"))
 
-  is_dvi_named <- function(e) startsWith(trimws(e$name %||% ""), DVI_PREFIX)
+  is_dvi_named <- function(e) startsWith(trimws(e$name %||% ""), ATLAS_LABEL_PREFIX)
 
   dvi_cohorts <- Filter(is_dvi_named, all_cohorts)
   dvi_csets   <- Filter(is_dvi_named, all_csets)
 
   cat(sprintf("  %d/%d cohorts and %d/%d concept sets match the \"%s\" prefix.\n",
               length(dvi_cohorts), length(all_cohorts),
-              length(dvi_csets), length(all_csets), DVI_PREFIX))
+              length(dvi_csets), length(all_csets), ATLAS_LABEL_PREFIX))
 
   index <- list(
     fetched_date = format(Sys.Date(), "%Y-%m-%d"),
-    instance     = DVI_ATLAS_BASE_URL,
+    instance     = ATLAS_BASE_URL,
     cohorts = lapply(dvi_cohorts, function(e) list(
       id = e$id, name = e$name, modified_date = epoch_millis_to_date(e$modifiedDate %||% e$createdDate)
     )),

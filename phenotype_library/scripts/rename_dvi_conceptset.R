@@ -5,8 +5,10 @@
 # WHAT THIS IS
 # ------------
 # ONE-OFF, EXPLICITLY-INVOKED writer that renames a SINGLE existing
-# [DVI]-prefixed ATLAS concept set's `name` field. Nothing else about the set
-# -- its items, its ATLAS id -- is touched.
+# label-prefixed ATLAS concept set's `name` field (see ATLAS_LABEL_PREFIX
+# below — "[DVI]" is just this template's placeholder, use your own lab's
+# label). Nothing else about the set -- its items, its ATLAS id -- is
+# touched.
 #
 # WHY THIS IS A SEPARATE SCRIPT FROM update_dvi_concept_sets.R
 # --------------------------------------------------------------
@@ -18,12 +20,12 @@
 # PUT /conceptset/{id} with {id, name} only. It never calls
 # /conceptset/{id}/items in either direction.
 #
-# Confirmed by live GET against atlas-demo.ohdsi.org 2026-08-27: the ATLAS
-# object being renamed here is a CONCEPT SET (GET /conceptset/{id} -> 200),
-# not a cohort definition (GET /cohortdefinition/{id} -> 404 for the same
-# id). Every existing DVI writer in this workspace only ever handles concept
-# sets for exactly this reason -- see phenotype_library/scripts/
-# update_dvi_concept_sets.R's header and [[dvi_atlas_write_access]].
+# Confirm this yourself against your own ATLAS instance before relying on
+# it: the object being renamed here is a CONCEPT SET (GET /conceptset/{id}
+# -> 200), not a cohort definition (GET /cohortdefinition/{id} -> 404 for the
+# same id). Every writer script in this phenotype_library/scripts/ directory
+# only ever handles concept sets for exactly this reason -- see
+# update_dvi_concept_sets.R's header.
 #
 # SAFETY GUARDS (same philosophy as update_dvi_concept_sets.R)
 # --------------------------------------------------------------
@@ -31,9 +33,9 @@
 #   * --id and --new-name are both MANDATORY. No defaults, no bulk mode,
 #     exactly one target per invocation.
 #   * The LIVE ATLAS name (fetched from WebAPI, not typed by the operator)
-#     must start with "[DVI]" -- refused otherwise, so this can never be
-#     pointed at someone else's non-DVI set.
-#   * --new-name must ALSO start with "[DVI]" -- refused otherwise.
+#     must start with ATLAS_LABEL_PREFIX -- refused otherwise, so this can
+#     never be pointed at someone else's untagged set.
+#   * --new-name must ALSO start with ATLAS_LABEL_PREFIX -- refused otherwise.
 #   * Backs up the live {id, name} to /tmp before any write, including on a
 #     dry run.
 #   * Refuses a no-op (new name identical to live name).
@@ -41,8 +43,8 @@
 #     loudly on any mismatch.
 #
 # USAGE (run from anywhere; workspace root is auto-detected)
-#   Rscript phenotype_library/scripts/rename_dvi_conceptset.R --id 1890929 \
-#     --new-name "[DVI] Open Lower Extremity Revascularization (OLER)"
+#   Rscript phenotype_library/scripts/rename_dvi_conceptset.R --id <concept_set_id> \
+#     --new-name "[DVI] Example Phenotype Name"
 #   # add --commit to actually write, after reviewing the dry-run output
 #
 # OUTPUT
@@ -53,8 +55,8 @@
 
 suppressWarnings(suppressMessages({ library(jsonlite) }))
 
-BASE_URL   <- "https://atlas-demo.ohdsi.org/WebAPI"
-DVI_PREFIX <- "[DVI]"
+BASE_URL           <- "https://atlas-demo.ohdsi.org/WebAPI"  # public OHDSI demo instance; point at your own if you have one
+ATLAS_LABEL_PREFIX <- "[DVI]"  # TODO: replace with your own lab's label, e.g. "[MYLAB]"
 STAMP      <- format(Sys.time(), "%Y%m%dT%H%M%S")
 
 args    <- commandArgs(trailingOnly = TRUE)
@@ -64,8 +66,8 @@ NEW_NAME <- { i <- match("--new-name", args); if (!is.na(i) && length(args) >= i
 
 if (is.na(ID) || is.na(NEW_NAME) || !nzchar(NEW_NAME)) {
   cat("\n*** REFUSED: --id <concept_set_id> and --new-name \"<name>\" are both mandatory.\n\n",
-      "    Rscript phenotype_library/scripts/rename_dvi_conceptset.R --id 1890929 \\\n",
-      "      --new-name \"[DVI] Open Lower Extremity Revascularization (OLER)\"\n\n", sep = "")
+      "    Rscript phenotype_library/scripts/rename_dvi_conceptset.R --id <concept_set_id> \\\n",
+      "      --new-name \"[DVI] Example Phenotype Name\"\n\n", sep = "")
   quit(status = 1)
 }
 
@@ -97,12 +99,12 @@ live_name <- fetch_name(ID)
 cat(sprintf("Live name    : %s\n", dQuote(live_name)))
 cat(sprintf("Desired name : %s\n", dQuote(NEW_NAME)))
 
-if (!startsWith(live_name, DVI_PREFIX)) {
-  cat(sprintf("\n*** REFUSED: live name does not start with '%s'. Refusing to touch a non-DVI set.\n", DVI_PREFIX))
+if (!startsWith(live_name, ATLAS_LABEL_PREFIX)) {
+  cat(sprintf("\n*** REFUSED: live name does not start with '%s'. Refusing to touch an untagged set.\n", ATLAS_LABEL_PREFIX))
   quit(status = 1)
 }
-if (!startsWith(NEW_NAME, DVI_PREFIX)) {
-  cat(sprintf("\n*** REFUSED: --new-name does not start with '%s'.\n", DVI_PREFIX))
+if (!startsWith(NEW_NAME, ATLAS_LABEL_PREFIX)) {
+  cat(sprintf("\n*** REFUSED: --new-name does not start with '%s'.\n", ATLAS_LABEL_PREFIX))
   quit(status = 1)
 }
 if (identical(live_name, NEW_NAME)) {
