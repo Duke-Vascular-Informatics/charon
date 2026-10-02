@@ -1,0 +1,230 @@
+# =============================================================================
+# phenotype_library/catalog.yaml — starter phenotype catalog
+#
+# Shared phenotype and concept set catalog for all OMOP observational studies
+# in your workspace.
+#
+# PURPOSE
+# -------
+# Before writing any concept ID into a study's covariates/, cohorts/, or SQL:
+#   1a. Check the OHDSI Phenotype Library for a published phenotype.
+#      Rscript phenotype_library/scripts/check_pl.R "<clinical term>"
+#   1b. Check the [DVI]-prefixed cohorts/concept sets on the public ATLAS demo
+#      instance — AUTHORITATIVE for this workspace (see ALIGNMENT below).
+#      Rscript phenotype_library/scripts/check_dvi.R "<clinical term>"
+#      (Rename the "[DVI]" prefix to your own lab's tag if you adopt this
+#      pattern for your own ATLAS instance/cohorts.)
+#   2. Check this catalog for a previously verified entry, and check whether a
+#      candidate concept list overlaps one already here before registering it
+#      as new.
+#      Rscript phenotype_library/scripts/lookup_catalog.R "<clinical term>"
+#      Rscript phenotype_library/scripts/check_overlap.R --concept-ids <ids>
+#   3. Only if none of the above cover it: run a live vocabulary query
+#      (/concept-lookup or Rscript scripts/concept_lookup.R).
+#      Then add the result as a new entry here.
+#
+# ENTRY STATUS VALUES
+# -------------------
+#   verified          — all concept IDs confirmed via live vocab query
+#   pending           — placeholder; concept IDs still need verification
+#   partial           — some concept IDs verified, others still need lookup
+#
+# OHDSI PHENOTYPE LIBRARY FIELDS
+# --------------------------------
+#   ohdsi_pl_id       — integer PL phenotype ID, or null if not found / not checked
+#   ohdsi_pl_checked  — ISO date this entry was last searched in the PL, or null
+#
+# All concept IDs without an explicit vocab_query_date are pending verification.
+# Never copy a concept_id from this file into study code without confirming
+# ohdsi_pl_checked or vocab_query_date is set.
+#
+# [DVI] ALIGNMENT (external_alignment / alignment_status fields)
+# -----------------------------------------------------------------------------
+# If your lab maintains its own authoritative ATLAS instance/tag (this
+# template uses a "[DVI]"-prefixed convention on atlas-demo.ohdsi.org as an
+# example — swap in your own), cohorts and concept sets published there can
+# be treated as authoritative: a local definition should converge to its
+# counterpart there, and any deliberate difference documented, not silently
+# diverged from. This is a stronger rule than the OHDSI Phenotype Library
+# check above, which is "check and cite if found" — a local definition may
+# still legitimately differ from a published PL phenotype.
+#
+# Any entry (phenotype in `entries:`, or concept set in `concept_sets:`) MAY
+# carry:
+#   external_alignment:  — list of external references this entry aligns to.
+#     - source:        e.g. "DVI_ATLAS" (name your own convention)
+#       type:          "concept_set" | "cohort_definition"
+#       id:             the ATLAS id
+#       instance:       the WebAPI base URL it was fetched from
+#       checked_date:   ISO date of the last fetch
+#   alignment_status:    — free text, one of:
+#     "matches_dvi"                    — identical to the referenced definition
+#     "diverges_from_dvi: <reason>"    — an intentional, documented exception
+#     "dvi_gap: <what's missing>"      — local is AHEAD of the reference
+#     "no_dvi_equivalent"              — nothing comparable published yet
+#
+# WRITE ACCESS: any tooling that writes back to an external ATLAS instance
+# should be strictly opt-in, dry-run by default, and scoped to a name prefix
+# you control — see `phenotype_library/scripts/` for this template's own
+# read-only-by-default pattern if you adopt one.
+#
+# CONCEPT SET ITEM FIELDS (per concept_sets[] item)
+# ---------------------------------------------------
+#   concept_code      — source-vocabulary code (e.g., SNOMED SCTID, LOINC,
+#                       ATC). Required for Atlas JSON concept objects.
+#                       Populated during live vocab query; null for pending
+#                       entries.
+#   concept_class_id  — vocabulary class (e.g., "Procedure", "Disorder",
+#                       "Lab Test", "Ingredient", "ATC 4th"). Also required
+#                       for Atlas JSON; populated alongside concept_code.
+#
+# OPTIONAL ENTRY-LEVEL FIELDS (for OHDSI Phenotype Library candidates)
+# ---------------------------------------------------------------------
+#   pl_candidate      — true if this entry is a candidate for submission to
+#                       the OHDSI Phenotype Library.
+#   cohort_entry      — hints for Atlas JSON PrimaryCriteria / EndStrategy.
+#                       Only on pl_candidate entries. Fields:
+#                         domain: Atlas CriteriaList key (e.g.,
+#                                 ProcedureOccurrence, ConditionOccurrence)
+#                         first_event_only: bool (PrimaryCriteriaLimit)
+#                         exit_strategy: ObservationPeriodEnd | DateOffset
+#                         washout_days: prior observation requirement (int)
+#
+# OMOP-LIMITED ENTRIES (omop_limited_entries section)
+# -------------------------------------------------------
+# A parallel top-level section for phenotypes of clinical interest where OMOP
+# data quality is insufficient for reliable CDM-only ascertainment. These are
+# NOT in the standard `entries:` list and are excluded from the three-tier
+# lookup workflow. Each entry documents:
+#
+#   omop_quality_issue  — why OMOP coverage fails (free text)
+#   development_path    — required extraction method:
+#                           clarity    : structured EHR-vendor SQL
+#                           nlp        : unstructured notes / NLP pipeline
+#                           imaging    : radiology reports or DICOM / imaging AI
+#                           clarity+nlp: combination of structured and NLP
+#   clarity_notes       — source table/column hints (clarity and clarity+nlp paths)
+#   nlp_notes           — key terms, regex patterns, note types (nlp and clarity+nlp paths)
+#   imaging_notes       — radiology report section hints or model references (imaging path)
+#
+# CONCEPT_SETS REGISTRY (top-level concept_sets: section)
+# -------------------------------------------------------------------
+# Standalone, globally-addressable concept sets — a more granular unit than a
+# phenotype `entries:` item. A phenotype's `cohort_entry` rules (domain,
+# washout, exit strategy) bundle a concept set with how it's USED for cohort
+# entry; the same raw concept set can be reused across different phenotypes
+# or cohort-entry configurations without re-deriving or re-verifying it.
+#
+# A concept_sets: registry item has the SAME shape as a phenotype `entries:`
+# item, minus the entry-only fields (cohort_entry, pl_candidate):
+#   id, name, domain, status
+#   concept_sets:            — flat list of {concept_id, concept_name,
+#                               concept_code, concept_class_id, vocabulary,
+#                               standard_concept, include_descendants,
+#                               vocab_query_date}
+#   exclusion_concept_sets:   — same shape, optional
+#   external_alignment / alignment_status  — see ALIGNMENT above
+#   used_by                  — same {study_id, role} shape as phenotype entries
+# =============================================================================
+
+schema_version: "1.0"
+last_updated: "2026-01-01"
+
+# ---------------------------------------------------------------------------
+# EXTERNAL SOURCES
+# Entries derived from external repositories are tagged with a `source_ref:`
+# field referencing the key below and are marked status: pending until
+# verified against your local omop_vocab SQL Server instance.
+# ---------------------------------------------------------------------------
+external_sources:
+  example_external_source:
+    title: "Example external phenotype source"
+    description: >
+      One-line description of where this concept set definition came from,
+      if borrowed from an external open-source repo rather than derived
+      in-house.
+    authors:
+      - name: "Author Name"
+        orcid: "https://orcid.org/0000-0000-0000-0000"
+    doi: null
+    url: "https://github.com/example-org/example-repo"
+    license: MIT
+    institution: null
+    accessed: "2026-01-01"
+
+# ---------------------------------------------------------------------------
+# CONCEPT_SETS REGISTRY
+# ---------------------------------------------------------------------------
+concept_sets:
+
+  - id: example_concept_set
+    name: "Example Standalone Concept Set"
+    description: >
+      What this concept set captures clinically, and any notable scoping
+      decisions (e.g. why a leaf concept vs. an ancestor with
+      include_descendants was chosen).
+    domain: Condition
+    ohdsi_pl_id: ~
+    ohdsi_pl_checked: ~
+    status: pending
+    concept_sets:
+      - concept_id: 0                    # [REPLACE] TODO: insert verified concept ID
+        concept_name: "Placeholder concept name"
+        concept_code: null
+        concept_class_id: null
+        vocabulary: SNOMED
+        standard_concept: S
+        include_descendants: false
+        vocab_query_date: null
+        notes: "Placeholder — run a vocabulary lookup before using in code."
+    used_by:
+      - study_id: my-study-desc
+        role: covariate
+    notes: "Placeholder entry — replace with your own verified concept set."
+
+# ---------------------------------------------------------------------------
+# OMOP-LIMITED ENTRIES — clinical concepts OMOP alone can't reliably capture
+# ---------------------------------------------------------------------------
+omop_limited_entries:
+
+  - id: example_omop_limited
+    name: "Example Concept Requiring Non-CDM Data"
+    omop_quality_issue: "Why OMOP coverage fails for this concept, in plain language."
+    development_path: nlp        # clarity | nlp | imaging | clarity+nlp
+    nlp_notes: "Key terms / regex patterns / note types to look for."
+    concept_id: 0                 # optional stub — closest standard concept, poorly captured
+    notes: "Placeholder entry."
+
+# ---------------------------------------------------------------------------
+# PHENOTYPE ENTRIES
+# ---------------------------------------------------------------------------
+entries:
+
+  - id: example_phenotype
+    name: "Example Phenotype"
+    pl_candidate: false
+    cohort_entry:
+      domain: ConditionOccurrence
+      first_event_only: true
+      exit_strategy: ObservationPeriodEnd
+      washout_days: 365
+    description: >
+      What this phenotype captures clinically, its inclusion/exclusion
+      logic, and how it relates to any sibling phenotypes.
+    domain: Condition
+    ohdsi_pl_id: ~
+    ohdsi_pl_checked: ~
+    status: pending
+    concept_sets:
+      - concept_id: 0                    # [REPLACE] TODO: insert verified concept ID
+        concept_name: "Placeholder concept name"
+        concept_code: null
+        concept_class_id: null
+        vocabulary: SNOMED
+        standard_concept: S
+        include_descendants: true
+        vocab_query_date: null
+    used_by:
+      - study_id: my-study-desc
+        role: target
+    notes: "Placeholder entry — replace with your own verified phenotype."

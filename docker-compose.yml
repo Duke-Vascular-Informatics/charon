@@ -1,0 +1,29 @@
+services:
+  mssql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: mssql_dev
+    restart: unless-stopped
+    ports:
+      - "${MSSQL_PORT:-1433}:1433"
+    environment:
+      ACCEPT_EULA: "1"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./init-scripts:/docker-entrypoint-initdb.d   # Optional: place .sql init scripts here
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'cat /dev/null > /dev/tcp/localhost/1433' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - omop_dev_network
+
+volumes:
+  mssql_data:
+    name: mssql_dev_data
+
+networks:
+  omop_dev_network:
+    name: omop_dev_network

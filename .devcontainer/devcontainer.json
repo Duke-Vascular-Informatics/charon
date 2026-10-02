@@ -1,0 +1,39 @@
+{
+	"name": "OMOP Dev Workspace (R + SQL Server)",
+	"dockerComposeFile": [
+		"../docker-compose.yml",
+		"docker-compose.yml"
+	],
+	"service": "devcontainer",
+	"workspaceFolder": "/workspace",
+	"overrideCommand": false,
+	"mounts": [
+		// macOS Docker Desktop SSH agent forwarding. The socket path is macOS-specific
+		// so this mount is marked optional — the container starts normally on Windows
+		// and Linux without it. SSH inside the container works for macOS users who have
+		// an SSH key loaded in their host agent; all other users rely on HTTPS + GH_TOKEN.
+		"source=/run/host-services/ssh-auth.sock,target=/ssh-agent,type=bind,optional=true",
+		// Mount the host Docker socket so tooling inside the container can drive
+		// the host Docker engine (docker CLI is installed in the image below).
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+	],
+	"remoteEnv": {
+		"IN_DEV_CONTAINER": "true",
+		// Points to the forwarded SSH agent socket (macOS only). On platforms where
+		// the optional mount above is absent this variable is harmless — SSH commands
+		// simply report "no agent" rather than crashing.
+		"SSH_AUTH_SOCK": "/ssh-agent"
+	},
+	"runServices": ["mssql", "devcontainer"],
+	"forwardPorts": [1433],
+	"postCreateCommand": "bash /workspace/infrastructure/setup/setup-editor.sh",
+	"shutdownAction": "stopCompose",
+	"remoteUser": "root",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"bierner.markdown-mermaid"
+			]
+		}
+	}
+}

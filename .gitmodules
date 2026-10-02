@@ -1,0 +1,12 @@
+[submodule "synthea-omop-template"]
+	path = synthea-omop-template
+	url = https://github.com/Duke-Vascular-Informatics/synthea-omop-template.git
+[submodule "omop-etl-template"]
+	path = omop-etl-template
+	url = https://github.com/Duke-Vascular-Informatics/omop-etl-template.git
+[submodule "strategus-study-template"]
+	path = strategus-study-template
+	url = https://github.com/Duke-Vascular-Informatics/strategus-study-template.git
+[submodule "omop-report-template"]
+	path = omop-report-template
+	url = https://github.com/Duke-Vascular-Informatics/omop-report-template.git

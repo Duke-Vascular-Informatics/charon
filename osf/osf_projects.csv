@@ -1,0 +1,2 @@
+study_dir,title,osf_guid,sync,notes
+my-study-desc,Full Study Title for the OSF Project,,FALSE,Placeholder row — osf_sync.R creates the project and fills in osf_guid on first run; set sync to TRUE once ready

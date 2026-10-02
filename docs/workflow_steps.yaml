@@ -1,0 +1,49 @@
+# Machine-readable step map for docs consistency checks.
+# Keep step titles synchronized with docs/GETTING_STARTED.md H2 headings.
+#
+# Regenerated 2026-08-18: the previous version of this file described a
+# 15-step GETTING_STARTED.md structure (repo-first ordering) that no longer
+# exists -- the doc was restructured to workspace-first (11 steps) at some
+# point without this file being updated to match, and neither was
+# COMMANDS.md. Anchors below are verified against four existing internal
+# links already working correctly inside GETTING_STARTED.md itself (e.g.
+# #connection-refused-on-localhost1433, #31-configure-disk-and-memory-limits,
+# #step-5b--mcp-servers-shared-config-personal-credentials in SETUP.md) --
+# lowercase, strip everything not alphanumeric/space/hyphen, then replace
+# spaces with hyphens. An em-dash between two spaces (as in "Workflow 01 —
+# Environment setup") collapses to a double hyphen, not a single one.
+
+steps:
+  - step: 1
+    title: Create a GitHub Account
+    anchor: step-1-create-a-github-account-2-minutes
+  - step: 2
+    title: Install Git
+    anchor: step-2-install-git-5-minutes
+  - step: 3
+    title: Install Docker Desktop
+    anchor: step-3-install-docker-desktop-5-minutes
+  - step: 4
+    title: Install VS Code and the Dev Containers Extension
+    anchor: step-4-install-vs-code-and-the-dev-containers-extension-5-minutes
+  - step: 5
+    title: Clone the Workspace Repository
+    anchor: step-5-clone-the-workspace-repository-2-minutes
+  - step: 6
+    title: Configure Your .env File and Build the Dev Container
+    anchor: step-6-configure-your-env-file-and-build-the-dev-container-1525-minutes
+  - step: 7
+    title: Verify Your Environment
+    anchor: step-7-verify-your-environment-2-minutes
+  - step: 8
+    title: Download OMOP Vocabulary Files
+    anchor: step-8-download-omop-vocabulary-files-3060-minutes-one-time
+  - step: 9
+    title: Load OMOP Vocabulary into SQL Server
+    anchor: step-9-load-omop-vocabulary-into-sql-server-3060-minutes-one-time
+  - step: 10
+    title: Create Your Study Repositories
+    anchor: step-10-create-your-study-repositories-10-minutes
+  - step: 11
+    title: Run the Study Workflow
+    anchor: step-11-run-the-study-workflow-23-hours-total

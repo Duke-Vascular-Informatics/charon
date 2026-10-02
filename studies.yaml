@@ -1,0 +1,188 @@
+# =============================================================================
+# studies.yaml — Workspace Study Registry starter
+#
+# Central index of all observational studies in your OMOP dev workspace.
+# Maintained automatically: workflow/02 appends a new entry when a study
+# passes artifact validation for the first time.
+#
+# Read by:
+#   - /sync-repos  — derives the ordered repo list for commit/push/merge
+#   - /check-issues (no arg) — loops all studies for open GitHub issues
+#   - /check-alignment (no arg) — checks all studies against the template
+#
+# To manually register a study that pre-dates this registry, append an entry
+# following the format below, then run workflow/02 in that study repo to
+# confirm the fields are correct.
+# =============================================================================
+
+# =============================================================================
+# PIPELINE ROLES
+#
+# docs/MIGRATION_PLAN_REPO_SPLIT.md splits the pipeline into four repo kinds
+# with distinct audiences. Every entry below carries a `pipeline_role` naming
+# which bucket it belongs to, plus a `migration:` block recording how far it
+# has actually moved. The two fields answer different questions:
+# `pipeline_role` = what this repo IS FOR; `migration` = what still has to
+# happen to it.
+#
+# pipeline_role values
+# --------------------
+#   synth            Bucket 1 — <study>-synth. Synthea module + Steps 1-6 for
+#                    ONE reusable synthetic OMOP CDM dataset. Never answers a
+#                    research question. Output is registered in
+#                    synthetic_data/registry.yaml.
+#   analysis-core    Bucket 2 — <study>. Cohorts, Strategus spec,
+#                    StrategusCodeToRun.R, docs, per-study report *spec*.
+#                    Must be shareable with ANY institution: nothing
+#                    institution-specific may travel with it.
+#   report-toolkit   Bucket 3 — a singleton package repo. GENERIC figure/
+#                    table helpers only. No database, no VPN, no credentials,
+#                    and NOTHING study-specific.
+#   report-repo      A single study's Word-report composition, in its own
+#                    repo, separate from that study's analysis-core repo.
+#                    Renders from result ARTIFACTS ONLY. Cross-referenced via
+#                    `report_repo` on the analysis-core entry and
+#                    `report_repo_for` here.
+#   site-deploy      Bucket 4 — bundle builder and site-specific deployment
+#                    config. Typically hosted outside GitHub if it touches
+#                    PHI-adjacent config.
+#   template         Scaffold repo that other repos are generated from.
+#   etl              Source-registry → OMOP CDM loader. Outside the four
+#                    buckets; it is the data preparation layer.
+#   not-a-study      Workspace tooling that lives in the studies list for
+#                    /sync-repos purposes only.
+#
+# migration: fields
+# -----------------
+#   framework  strategus | synthea-omop-template | n/a
+#              Which scaffold the analysis runs on.
+#   report     none | artifact-driven | extracted | db-coupled | inherited-unused | n/a
+#              artifact-driven = renders with no database connection but the
+#                                report code still lives IN this repo.
+#              extracted       = the report moved to its OWN report-repo
+#                                entirely (see `report_repo`).
+#              db-coupled      = still calls a live-database fetch function;
+#                                blocks the artifact-only milestone.
+#              inherited-unused= template report scaffolding present but never
+#                                run (e.g. a -synth repo); delete rather than
+#                                split.
+#   report_repo  Set on an analysis-core entry once its report has been
+#              extracted — names the sibling report-repo.
+#   deploy     none | in-repo | extracted | external
+#   todo       Ordered list of remaining migration work (free-form tokens
+#              your team defines and documents here as you adopt them).
+#              An empty list means the repo already matches the target format.
+# =============================================================================
+
+workspace_root:
+  path: /path/to/your/workspace
+  github: my-org/my-omop-dev-workspace
+
+pipeline:
+  plan: docs/MIGRATION_PLAN_REPO_SPLIT.md
+  status: proposed          # proposed | in-progress | complete
+  pilot: null                # set to a repo dir once you pilot the split
+
+  repos:
+
+    - name: my-report-toolkit
+      pipeline_role: report-toolkit
+      github: my-org/my-report-toolkit
+      status: proposed          # proposed | live
+      visibility: private
+      consumption: renv-github-install
+      phase: 0
+      audience: "internal team (+ optionally collaborating sites)"
+      description: >
+        Generic figure/table helpers shared across every report repo.
+        Nothing study-specific.
+      consumers: []
+      note: "Placeholder pipeline entry — replace or remove once you decide whether you need a shared report-toolkit repo."
+
+# -----------------------------------------------------------------------------
+# templates: — shared, generic scaffold repos (git submodules, or renv
+# packages) that other repos are generated FROM. Never put a real study here.
+# -----------------------------------------------------------------------------
+templates:
+
+  - template_name: synthea-omop-template
+    dir: synthea-omop-template
+    github: my-org/synthea-omop-template
+    type: submodule
+    pipeline_role: template
+    status: current
+    description: "Legacy numbered-workflow template (Steps 1-9) — still current for -synth repos."
+    registered: 2026-01-01
+
+  - template_name: omop-etl-template
+    dir: omop-etl-template
+    github: my-org/omop-etl-template
+    type: submodule
+    pipeline_role: template
+    status: current
+    description: "ETL scaffold — copy for each new source-registry data loader."
+    registered: 2026-01-01
+
+  - template_name: strategus-study-template
+    dir: strategus-study-template
+    github: my-org/strategus-study-template
+    type: submodule
+    pipeline_role: template
+    status: current
+    description: "Strategus/circe-based analysis-core scaffold — default for new studies."
+    registered: 2026-01-01
+
+  - template_name: omop-report-template
+    dir: omop-report-template
+    github: my-org/omop-report-template
+    type: submodule
+    pipeline_role: template
+    status: current
+    description: "Bucket 3b report-repo scaffold — every study gets one of these as a sibling repo."
+    registered: 2026-01-01
+
+# -----------------------------------------------------------------------------
+# etls: — source-registry -> OMOP CDM loaders. Not observational studies;
+# sit outside the four pipeline buckets.
+# -----------------------------------------------------------------------------
+etls:
+
+  - dir: my-etl-source
+    github: my-org/my-etl-source
+    etl_name: my_etl_source
+    pipeline_role: etl
+    migration:
+      framework: n/a
+      report: n/a
+      deploy: none
+      todo: []
+    source_registry: "Placeholder source registry name"
+    target_schema_env: INST_OMOP_RESULTS_SCHEMA
+    person_id_offset: null
+    description: "Placeholder ETL entry — replace with your own source registry loader, or remove this section if you have none yet."
+    registered: 2026-01-01
+
+# -----------------------------------------------------------------------------
+# studies: — one entry per study/report/synth repo. Replace this
+# placeholder with your own repos; every field from the real registry is
+# shown so you can see the full shape.
+# -----------------------------------------------------------------------------
+studies:
+
+  - dir: my-study-desc
+    github: my-org/my-study-desc
+    study_name: my_study_desc
+    study_design: descriptive   # descriptive | prognostic | causal-inference
+    pipeline_role: analysis-core
+    migration:
+      framework: strategus       # or synthea-omop-template
+      report: none
+      deploy: none
+      todo: []
+    consumes_dataset: my_synth_dataset   # optional — name of a synthetic_data/registry.yaml entry this study reuses
+    produces_dataset: null               # optional — set if this repo IS the -synth source for a dataset
+    note: >
+      Free-text notes: design decisions, open TODOs, anything future-you or a
+      collaborator needs to know that isn't obvious from the code.
+    description: "One-line description of the study, shown by /check-issues and /check-alignment summaries."
+    registered: 2026-01-01

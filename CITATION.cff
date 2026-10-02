@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it using the metadata below."
+type: software
+title: "Charon"
+abstract: >
+  Containerized HADES Analytics for Research in OHDSI Networks — a reusable
+  scaffold for OMOP CDM observational studies. Provides containerised
+  infrastructure (SQL Server, R 4.5, Java 17, OHDSI HADES), a shared
+  phenotype library, and AI-assisted coding conventions for federated
+  observational research using the OHDSI toolstack.
+  Funding: Research reported in this publication was supported by the National
+  Center For Advancing Translational Sciences of the National Institutes of Health
+  under Award Number K12TR005435. The content is solely the responsibility of the
+  authors and does not necessarily represent the official views of the National
+  Institutes of Health.
+authors:
+  - family-names: Johnson
+    given-names: Adam P.
+    name-suffix: MD, MPH
+    email: adam.johnson@duke.edu
+    orcid: https://orcid.org/0000-0002-3014-6372
+    affiliation: Duke University School of Medicine, Department of Surgery
+    # Secondary affiliation(s): Durham VA Medical Center
+    # CFF 1.2.0 does not support multiple affiliations per author entry.
+    # Full affiliation list is in contributors.yaml.
+repository-code: "https://github.com/Duke-Vascular-Informatics/charon"
+license: GPL-2.0-only
+date-released: "2026-10-01"
+keywords:
+  - OMOP CDM
+  - OHDSI
+  - HADES
+  - observational research
+  - federated analysis
+  - real-world evidence
+  - reusable template
+  - containerized

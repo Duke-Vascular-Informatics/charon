@@ -1,0 +1,68 @@
+# =============================================================================
+# scripts/charon_manifest.txt
+#
+# Paths shared between this workspace and the `charon` template repo
+# (https://github.com/Duke-Vascular-Informatics/charon). Each line is one
+# path (file or directory), synced as a unit by scripts/pull_charon_updates.sh
+# and scripts/push_charon_updates.sh. '#' starts a comment; blank lines are
+# ignored; order doesn't matter.
+#
+# MAINTENANCE RULE: a directory listed here must contain ONLY generic,
+# shareable content, forever. If a lab-specific file is ever added directly
+# inside one of these directories (e.g. a new workspace-root script that
+# hardcodes this lab's data), either move it elsewhere or demote this entry
+# to individual file paths.
+#
+# Deliberately excluded (diverge by design, never synced):
+#   docs/CHANGELOG.md, docs/MIGRATION_PLAN_REPO_SPLIT.md,
+#   docs/REPORT_GENERATION.md, CITATION.cff, .github/CODEOWNERS,
+#   studies.yaml, contributors.yaml, phenotype_library/catalog.yaml,
+#   osf/osf_projects.csv, osf/osf_files.csv, WORKSPACE_ROSTER.md
+# The four template submodules are updated via normal `git submodule`
+# pointer bumps, not through this manifest.
+# =============================================================================
+
+# --- container / environment ---
+.devcontainer
+docker-compose.yml
+renv.lock
+renv/activate.R
+.Rprofile
+.env.example
+infrastructure
+
+# --- AI assistant instructions ---
+CLAUDE.md
+.github/copilot-instructions.md
+.github/instructions
+
+# --- scripts ---
+scripts
+phenotype_library/scripts
+synthetic_data/scripts
+synthetic_data/README.md
+osf/osf_sync.R
+osf/osf_wiki_update.R
+
+# NOTE: phenotype_library/README.md is deliberately NOT listed above. Its
+# "Catalog Contents" table is auto-generated from THIS repo's own
+# catalog.yaml (via phenotype_library/scripts/regenerate_readme_table.R) —
+# syncing the file verbatim would carry one repo's catalog entries into the
+# other. Regenerate it locally after editing catalog.yaml instead.
+
+# --- docs ---
+docs/ANALYST_PLAYBOOK.md
+docs/GIT_GITHUB_AUTH.md
+docs/MAINTAINER_PLAYBOOK.md
+docs/MSSQL-Mac-Setup-Guide.md
+docs/README.md
+docs/TOPIC_OWNERSHIP.csv
+docs/TROUBLESHOOTING_ETL.md
+docs/workflow_steps.yaml
+docs/COMMANDS.md
+docs/GETTING_STARTED.md
+docs/SETUP.md
+docs/TROUBLESHOOTING_VOCAB_LOAD.md
+
+# --- license ---
+LICENSE

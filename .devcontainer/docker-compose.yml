@@ -1,0 +1,38 @@
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        # Pass CRAN_MIRROR from .env into the build so R uses the same mirror
+        # at build time (renv install) as it does at runtime.
+        CRAN_MIRROR: ${CRAN_MIRROR:-https://archive.linux.duke.edu/cran/}
+    volumes:
+      - .:/workspace:cached
+      - ./omop_vocab:/omop_vocab:ro
+      - renv_cache:/root/.cache/R/renv
+    command: sleep infinity
+    env_file:
+      - .env
+    environment:
+      MSSQL_HOST: ${DEVCONTAINER_MSSQL_HOST:-mssql_dev}
+      OMOP_SERVER: ${DEVCONTAINER_OMOP_SERVER:-mssql_dev}
+      OHDSI_VOCAB_CSV_DIR: /omop_vocab
+      RENV_PATHS_CACHE: /root/.cache/R/renv
+      # renv uses GITHUB_PAT to authenticate GitHub API calls when restoring
+      # packages that are sourced from GitHub (e.g. OHDSI HADES packages).
+      # Without this, unauthenticated requests are capped at 60/hour per IP —
+      # enough to fail on a shared university network. We reuse GH_TOKEN so
+      # students only need one token in their .env file.
+      GITHUB_PAT: ${GH_TOKEN:-}
+      # Default to Haiku to keep token costs low for routine tasks (file edits,
+      # git operations, concept lookups, simple questions). Students can switch
+      # to Sonnet or Opus inside Claude Code when needed — see CLAUDE.md for
+      # guidance on when to upgrade.
+      CLAUDE_MODEL: claude-haiku-4-5-20251001
+    networks:
+      - omop_dev_network
+
+volumes:
+  renv_cache:
+ 

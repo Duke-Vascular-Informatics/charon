@@ -1,0 +1,87 @@
+# =============================================================================
+# contributors.yaml — Workspace Contributor Registry starter
+#
+# Central index of all contributors across your OMOP dev workspace.
+# Each entry records identity, affiliations, and per-repo CRediT roles.
+#
+# CRediT taxonomy (https://credit.niso.org/):
+#   conceptualization, methodology, software, validation, formal-analysis,
+#   investigation, data-curation, writing-original-draft,
+#   writing-review-editing, visualization, supervision,
+#   project-administration, funding-acquisition, resources
+#
+# Read by:
+#   - scripts/sync_contributors.R  — generates per-repo CONTRIBUTORS.md
+#                                    and updates CITATION.cff authors block
+#
+# To add a contributor:
+#   1. Append an entry below following the format shown.
+#   2. List each repo they contribute to under `repos`, with their CRediT roles.
+#   3. Use repo `"*"` to assign roles across all repos in the workspace.
+#   4. Run: Rscript scripts/sync_contributors.R
+# =============================================================================
+
+contributors:
+
+  - family_names: Johnson
+    given_names: "Adam P."
+    name_suffix: "MD, MPH"
+    orcid: "https://orcid.org/0000-0002-3014-6372"
+    email: adam.johnson@duke.edu
+    affiliations:
+      - name: "Duke University School of Medicine, Department of Surgery"
+        city: Durham
+        region: NC
+        country: US
+      - name: "Durham VA Medical Center"
+        city: Durham
+        region: NC
+        country: US
+    repos:
+      - repo: "*"
+        credit:
+          - conceptualization
+          - methodology
+          - software
+          - project-administration
+          - supervision
+
+# =============================================================================
+# TEMPLATE — copy from here when adding a new contributor
+# -----------------------------------------------------------------------------
+# Required fields (minimum for CITATION.cff and CONTRIBUTORS.md):
+#   family_names, given_names, at least one repos entry with at least one credit
+#
+# Recommended fields:
+#   orcid       — persistent identifier; use https://orcid.org/0000-0000-0000-0000
+#   email       — institutional/work address preferred
+#   name_suffix — degrees, e.g. "PhD" or "MD, MPH" (omit if none)
+#   affiliations — at least primary; add further blocks for secondary affiliations
+#
+# CRediT roles (pick all that apply per repo):
+#   conceptualization, methodology, software, validation, formal-analysis,
+#   investigation, data-curation, writing-original-draft,
+#   writing-review-editing, visualization, supervision,
+#   project-administration, funding-acquisition, resources
+#
+# Repo values:
+#   "*"   — applies to every repo in the workspace
+#   <dir> — a specific repo's `dir` value from studies.yaml
+#
+# After adding, run: Rscript scripts/sync_contributors.R
+# =============================================================================
+#
+#  - family_names: ""
+#    given_names: ""
+#    name_suffix: ""           # optional — omit line if not applicable
+#    orcid: ""                 # recommended — https://orcid.org/0000-0000-0000-0000
+#    email: ""                 # recommended — institutional address
+#    affiliations:
+#      - name: ""
+#        city: ""
+#        region: ""            # state/province abbreviation
+#        country: US
+#    repos:
+#      - repo: ""              # repo name or "*" for all
+#        credit:
+#          - ""                # one or more CRediT roles from the list above

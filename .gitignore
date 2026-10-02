@@ -1,0 +1,58 @@
+# Never commit secrets or local environment config.
+# Ignore .env and any variant (.env.local, .env.bak, .env.save, etc.),
+# but always keep the safe, committed placeholder template .env.example.
+.env
+.env.*
+!.env.example
+
+# Never commit vocabulary CSVs (licensed via Athena, not for redistribution)
+omop_vocab/
+
+# Keep every study/report/synth/ETL repo registered in studies.yaml
+# independent from this workspace repo — they live inside this workspace
+# folder but each has its own GitHub remote. Add your own repo directory
+# names here as you create them, e.g.:
+#   my-study-desc/
+#   my-study-desc-report/
+
+# Claude Code session artefacts — never commit
+.claude/worktrees/
+.claude/settings.local.json
+
+# renv — commit the lockfile and activation script; ignore the installed library.
+# The library is rebuilt from the lockfile on each dev container postCreate.
+renv/library/
+renv/staging/
+renv/sandbox/
+renv/python/
+
+# Local/editor noise
+.DS_Store
+.Rhistory
+
+# Node.js (presentations tooling, if you add any)
+node_modules/
+presentations/
+
+# Sample code — local reference material, not part of the distributed template
+sample code/
+
+# Site topology — contains schema names and connection env references;
+# should not be shared broadly if you add one.
+datasets.yaml
+
+# Per-machine synthetic dataset cache — which synthetic_data/registry.yaml
+# entries are actually populated on THIS SQL Server instance, and any local
+# view-overlay schemas built from them. Never portable across machines; see
+# synthetic_data/README.md.
+synthetic_data/local_schemas.yaml
+
+# Staged exports/downloads for the synthetic data registry's download tier —
+# large generated artifacts, not source.
+synthetic_data/exports/
+synthetic_data/downloads/
+
+# IRB protocols and applications — contain institutional/personnel detail and
+# study-specific PHI handling language; keep local, never commit, if you add
+# any.
+irbs-protocols/

@@ -1,0 +1,95 @@
+# =============================================================================
+# synthetic_data/registry.yaml — starter synthetic dataset registry
+#
+# Shared catalog of disease/procedure/outcome-specific synthetic OMOP CDM
+# datasets generated via Synthea in your workspace, so a new analysis can
+# reuse one instead of standing up its own ETL from scratch.
+#
+# See synthetic_data/README.md for the full reuse workflow. Short version —
+# three ways to use an entry below, in order of cost:
+#
+#   1. Same machine, already populated : point cdm_schema / OMOP_CDM_SCHEMA_OVERRIDE
+#      at the schema recorded in your own (gitignored) synthetic_data/local_schemas.yaml.
+#   2. Cross machine, regenerate       : copy synthea_module_path + generation_params
+#      into your own repo and run its Steps 3-5 against your own vocab.
+#   3. Cross machine, download         : if a `download:` block is present, fetch
+#      the GitHub Release asset (clinical tables only, see below) and bulk-load it.
+#
+# HARD RULE — never add vocabulary table content or a full schema dump to this
+# file or to any exported artifact referenced from it. OMOP vocabulary
+# (omop_vocab) is typically Athena/UMLS-licensed and NOT for redistribution —
+# see docs/SETUP.md and your institution's vocabulary license terms. Every
+# `download:` entry must name only clinical fact tables (person,
+# visit_occurrence, condition_occurrence, drug_exposure,
+# procedure_occurrence, measurement, observation, death, condition_era,
+# drug_era, dose_era) with bare concept_id integers — never concept,
+# concept_relationship, concept_ancestor, concept_synonym, vocabulary,
+# drug_strength, domain, concept_class, or relationship.
+#
+# ENTRY STATUS VALUES
+# --------------------
+#   verified          — last_generated / QC summary reflect a real, recent ETL run
+#   stale              — dataset content likely out of date (e.g. module changed
+#                         since last_generated.date); regenerate before relying on it
+#   needs_regeneration — known broken/empty; do not point new work at it yet
+#
+# PIPELINE POSITION
+# -------------------------------------
+# This registry is the contract between a `<study>-synth` repo (which
+# generates a dataset) and a `<study>` analysis-core repo that consumes it.
+# `source_repo` names the producer; `used_by` names the consumers.
+# `studies.yaml` carries the matching `produces_dataset`/`consumes_dataset`
+# fields — the two files must agree.
+#
+# Two per-entry fields make the producer status explicit:
+#
+#   producer_role         synth  — produced by a dedicated -synth repo (target)
+#                         study  — produced inside a study repo (pre-convention)
+#   producer_conformance  conforming        — the -synth repo holds Steps 1-6 only
+#                         template-baggage  — still carries unused Steps 7-9
+#                         embedded          — not a -synth repo at all
+#
+# VERSIONED SHAPE — each dataset's `versions:` list tracks every regeneration:
+#   version              — a short label (e.g. v1, v2)
+#   physical_schema      — the actual SQL Server schema name this version lives in
+#   pinned_consumers     — repos whose workflow/05 ETL interlock refuses to
+#                         regenerate over this version while non-empty
+#   last_generated        — {date, by} of the most recent ETL run
+#   qc_summary            — one-line note on row counts / sanity checks
+# =============================================================================
+
+datasets:
+  - id: my_study_synth_dataset
+    source_repo: my-study-synth
+    producer_role: synth
+    producer_conformance: conforming
+    synthea_module_path: my-study-synth/synthea/modules/my_module.json
+
+    generation_params:
+      population: 1000
+      age_range: "18-100"
+      state: "Placeholder"
+      seed: null   # TODO: record the seed used so regeneration is reproducible
+
+    disease: "Placeholder disease/condition of interest"
+    procedure: "Placeholder index procedure"
+    outcomes_present:
+      - "placeholder outcome 1"
+      - "placeholder outcome 2"
+    status: verified
+
+    versions:
+      - version: v1
+        physical_schema: omop_synth_my_study
+        pinned_consumers: []   # repo names that must NOT have this regenerated
+                                # out from under them; empty means safe to rebuild
+        last_generated:
+          date: 2026-01-01
+          by: your-github-username
+        qc_summary: "Placeholder — replace with your own dataset's QC summary once generated."
+
+    used_by:
+      - study_id: my-study-desc
+        role: primary
+
+    notes: "Placeholder entry — replace with your own synthetic dataset, or delete this section if you have none registered yet."
