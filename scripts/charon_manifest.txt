@@ -67,6 +67,7 @@ osf/osf_wiki_update.R
 docs/ANALYST_PLAYBOOK.md
 docs/GIT_GITHUB_AUTH.md
 docs/MAINTAINER_PLAYBOOK.md
+docs/RELEASING.md
 docs/MSSQL-Mac-Setup-Guide.md
 docs/README.md
 docs/TOPIC_OWNERSHIP.csv
