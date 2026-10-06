@@ -669,7 +669,8 @@ Your workspace now has both repos side by side:
 ever.** If you find yourself wanting to add `DatabaseConnector` or
 `connection_details` inside `<your-study>-report`, that query belongs in
 `<your-study>`'s `R/extract_report_inputs.R` instead. See
-`omop-report-template`'s README and `docs/MIGRATION_PLAN_REPO_SPLIT.md` for why.
+`omop-report-template`'s README and the "Multi-Repo Analysis Pipeline" section of the
+top-level `README.md` for why.
 
 ---
 
