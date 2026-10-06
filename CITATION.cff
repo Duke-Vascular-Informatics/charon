@@ -52,7 +52,7 @@ authors:
     affiliation: Duke University
 repository-code: "https://github.com/Duke-Vascular-Informatics/charon"
 license: GPL-2.0-only
-date-released: "2026-10-01"
+date-released: "2026-10-06"
 keywords:
   - OMOP CDM
   - OHDSI
