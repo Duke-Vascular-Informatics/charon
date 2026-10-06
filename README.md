@@ -1,5 +1,7 @@
 # Charon
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23189333.svg)](https://doi.org/10.5281/zenodo.23189333)
+
 **Containerized HADES Analytics for Research in OHDSI Networks.**
 
 A reusable scaffold for OMOP CDM observational studies: a pre-configured dev
@@ -416,6 +418,18 @@ The SQL Server image (`mcr.microsoft.com/azure-sql-edge`) provides native ARM64 
 See [`docs/MAINTAINER_PLAYBOOK.md`](docs/MAINTAINER_PLAYBOOK.md) for the
 governance process, and `scripts/push_charon_updates.sh` if you're
 contributing an infra fix back from a workspace built on this template.
+
+---
+
+## Citing
+
+If you use charon, please cite it — see [`CITATION.cff`](CITATION.cff) (GitHub's
+**Cite this repository** button reads it). The DOI badge above,
+[10.5281/zenodo.23189333](https://doi.org/10.5281/zenodo.23189333), always
+resolves to the latest release; each release also has its own version DOI on
+[Zenodo](https://doi.org/10.5281/zenodo.23189333), which is the one to cite when
+reproducibility of a specific version matters (v1.0.0:
+[10.5281/zenodo.23189334](https://doi.org/10.5281/zenodo.23189334)).
 
 ---
 
