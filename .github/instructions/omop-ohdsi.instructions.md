@@ -107,7 +107,7 @@ cohort_end_date       DATE    -- observation end or censoring date
   ```
 - **Use `build_cohorts()` from `R/cohorts.R`** to instantiate cohorts from SQL files. Cohort SQL paths are read from `config$target_cohort_sql`, `config$comparator_cohort_sql`, `config$outcome_cohort_sql`. Do not hardcode paths.
 - **All outputs go to `config$output_folder`.** Do not hardcode output paths anywhere in analysis code.
-- **Protected infrastructure** — do not modify: `R/drivers.R`, `R/connection.R`, `R/cohorts.R`, `setup/`, `.devcontainer/`, `workflow/01`, `workflow/03`–`06`, `workflow/09`.
+- **Protected infrastructure** — do not modify: `R/drivers.R`, `R/connection.R`, `R/cohorts.R`, `setup/`, `.devcontainer/`, `workflow/01`, `workflow/03`–`06`.
 - **Covariates directory layout** — all patient features live under `covariates/`:
   - `covariates/covariates.csv` — one row per feature; add a `points` column for integer risk score studies.
   - `covariates/covariate_concepts.csv` — OMOP concept IDs for each feature.

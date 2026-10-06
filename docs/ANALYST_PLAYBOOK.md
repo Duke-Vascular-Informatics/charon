@@ -52,7 +52,6 @@ Use `Terminal -> Run Task`:
 - Analyst: Concept Lookup
 - Analyst: Validate Step 2 Artifacts
 - Analyst: Run Step 8 Analysis
-- Analyst: Build Portable Bundle (bash / PowerShell)
 - Analyst: Create Support Bundle
 
 ---

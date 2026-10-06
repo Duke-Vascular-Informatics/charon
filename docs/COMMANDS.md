@@ -32,8 +32,6 @@ When a command changes:
 | Run QC checks | `Rscript workflow/06_quality_check_defined_phenotypes.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Setup analysis environment | `Rscript workflow/07_setup_analysis_env.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Run analysis (`synthea-omop-template`) | `Rscript workflow/08_run_analysis_and_manuscript_report.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
-| Build portable bundle (bash) | `bash workflow/09_build_portable_analysis_bundle.sh` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
-| Build portable bundle (PowerShell) | `powershell -ExecutionPolicy Bypass -File workflow/09_build_portable_analysis_bundle.ps1` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Generate the manuscript report (`omop-report-template`) | `Rscript GenerateReport.R` | [Step 10.5](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
 | Validate customization status | `Rscript scripts/check_setup.R` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
 | Look up OMOP concepts | `Rscript scripts/concept_lookup.R "<clinical term>" <Domain>` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |

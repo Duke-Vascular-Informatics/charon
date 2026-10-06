@@ -808,21 +808,6 @@ Outputs are written to `output/<study_name>/`.
 
 ---
 
-### Workflow 09 — Build transportable code packet
-
-Packages your analysis code, R packages, and configuration into a
-self-contained bundle ready to share with a data partner.
-
-```bash
-bash workflow/09_build_portable_analysis_bundle.sh
-```
-
-> **Windows:** use `powershell -ExecutionPolicy Bypass -File workflow/09_build_portable_analysis_bundle.ps1` instead.
-
-This creates a `portable/` folder inside your study repo.
-
----
-
 ## Troubleshooting
 
 - Infrastructure and container setup: [SETUP.md](SETUP.md)
@@ -914,9 +899,8 @@ docker compose up -d
 | `study_params.yaml` | Your study settings — edit this |
 | `cohorts/*.sql` | Cohort definitions — edit these |
 | `covariates/*.csv` | Covariate definitions — edit these |
-| `workflow/01–09` | Analysis pipeline — do not edit |
+| `workflow/01–08` | Analysis pipeline — do not edit |
 | `output/` | Analysis results (gitignored) — read by `<your-study>-report` |
-| `portable/` | Transportable bundle for sharing |
 
 **Report repo (`<your-study>-report/`, from `omop-report-template`)**
 
@@ -925,7 +909,7 @@ docker compose up -d
 | `GenerateReport.R` | Entry point — `Rscript GenerateReport.R` |
 | `config.R` | Reads `report_inputs/_report_config.yaml` — no `study_params.yaml` here |
 | `R/report_dispatch.R`, `R/report_helpers.R` | Your report composition — edit these |
-| `prcc_data/` | Institution's secure-environment data export drop-zone (gitignored except its README) |
+| `export_data/` | Secure-environment export drop-zone (gitignored except its README) |
 | `reports/` | Rendered `.docx` output (gitignored) |
 
 ---
