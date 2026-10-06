@@ -153,11 +153,9 @@ flowchart TB
 A study answering one research question is split across up to four
 independent repos, not authored in one. Each split repo has a **template**
 you scaffold it from — the same relationship this workspace has with
-`synthea-omop-template`, generalized. See
-[`docs/MIGRATION_PLAN_REPO_SPLIT.md`](docs/MIGRATION_PLAN_REPO_SPLIT.md) for
-the full rationale (in short: deployment machinery and report code copied
-into every study repo drift, and fixing the same bug five times is how that
-was discovered).
+`synthea-omop-template`, generalized. The rationale, in short: deployment
+machinery and report code copied into every study repo drift, and fixing the
+same bug five times is how that was discovered.
 
 | # | Role | Repo name | Template | Contents |
 |---|---|---|---|---|

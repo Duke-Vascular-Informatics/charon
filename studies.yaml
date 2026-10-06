@@ -18,7 +18,7 @@
 # =============================================================================
 # PIPELINE ROLES
 #
-# docs/MIGRATION_PLAN_REPO_SPLIT.md splits the pipeline into four repo kinds
+# The README's "Multi-Repo Analysis Pipeline" section splits the pipeline into four repo kinds
 # with distinct audiences. Every entry below carries a `pipeline_role` naming
 # which bucket it belongs to, plus a `migration:` block recording how far it
 # has actually moved. The two fields answer different questions:
@@ -79,7 +79,7 @@ workspace_root:
   github: my-org/my-omop-dev-workspace
 
 pipeline:
-  plan: docs/MIGRATION_PLAN_REPO_SPLIT.md
+  plan: README.md#multi-repo-analysis-pipeline   # or your own plan doc, if you write one
   status: proposed          # proposed | in-progress | complete
   pilot: null                # set to a repo dir once you pilot the split
 
