@@ -47,6 +47,7 @@ contributors:
           - supervision
 
   - family_names: Ali
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Ayman"
     # email: ""               # TODO: add institutional email
     # orcid: ""               # TODO: add if available
@@ -61,6 +62,7 @@ contributors:
           - validation
 
   - family_names: Kalipatnapu
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Sasank"
     # email: ""               # TODO: add institutional email
     # orcid: ""               # TODO: add if available
@@ -75,6 +77,7 @@ contributors:
           - validation
 
   - family_names: Siddiqui
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Shoaib"
     # email: ""               # TODO: add institutional email
     # orcid: ""               # TODO: add if available
@@ -89,6 +92,7 @@ contributors:
           - validation
 
   - family_names: Yu
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Junette"
     name_suffix: "BS"
     orcid: "https://orcid.org/0000-0003-1161-5265"
@@ -104,6 +108,7 @@ contributors:
           - validation
 
   - family_names: Ge
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Kyle"
     # email: ""               # TODO: add institutional email
     # orcid: ""               # TODO: add if available
@@ -119,6 +124,7 @@ contributors:
     notes: "Medical student."
 
   - family_names: Minty
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Evan"
     # email: ""               # TODO: add institutional email
     # orcid: ""               # TODO: add if available
@@ -133,6 +139,7 @@ contributors:
           - validation
 
   - family_names: Mureebe
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Leila"
     # name_suffix: ""         # TODO: add degree/suffix if applicable
     # email: ""               # TODO: add institutional email
@@ -149,6 +156,7 @@ contributors:
     notes: "Professor of Surgery."
 
   - family_names: Couce
+    cff_author: false         # tester: listed in CONTRIBUTORS.md, not a CITATION.cff author
     given_names: "Logan"
     # email: ""               # TODO: add institutional email
     # orcid: ""               # TODO: add if available
@@ -167,6 +175,10 @@ contributors:
 # -----------------------------------------------------------------------------
 # Required fields (minimum for CITATION.cff and CONTRIBUTORS.md):
 #   family_names, given_names, at least one repos entry with at least one credit
+#
+# Optional fields:
+#   cff_author  — set to false to keep someone in CONTRIBUTORS.md but leave them
+#                 out of CITATION.cff's authors (e.g. testers, not software authors)
 #
 # Recommended fields:
 #   orcid       — persistent identifier; use https://orcid.org/0000-0000-0000-0000

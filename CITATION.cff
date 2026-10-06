@@ -23,33 +23,6 @@ authors:
     # Secondary affiliation(s): Durham VA Medical Center
     # CFF 1.2.0 does not support multiple affiliations per author entry.
     # Full affiliation list is in contributors.yaml.
-  - family-names: Ali
-    given-names: Ayman
-    affiliation: Duke University School of Medicine
-  - family-names: Kalipatnapu
-    given-names: Sasank
-    affiliation: University of Massachusetts Chan Medical School
-  - family-names: Siddiqui
-    given-names: Shoaib
-    affiliation: Lake Erie College of Osteopathic Medicine
-  - family-names: Yu
-    given-names: Junette
-    name-suffix: BS
-    email: junette.yu@duke.edu
-    orcid: https://orcid.org/0000-0003-1161-5265
-    affiliation: Duke University School of Medicine
-  - family-names: Ge
-    given-names: Kyle
-    affiliation: Duke University School of Medicine
-  - family-names: Minty
-    given-names: Evan
-    affiliation: University of Calgary
-  - family-names: Mureebe
-    given-names: Leila
-    affiliation: Duke University School of Medicine, Department of Surgery
-  - family-names: Couce
-    given-names: Logan
-    affiliation: Duke University
 repository-code: "https://github.com/Duke-Vascular-Informatics/charon"
 license: GPL-2.0-only
 date-released: "2026-10-06"
