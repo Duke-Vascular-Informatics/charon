@@ -21,6 +21,10 @@
 # update, affiliation change). Never edit CONTRIBUTORS.md or the authors block
 # of CITATION.cff by hand — those are generated and will be overwritten.
 #
+# Optional per-contributor field `cff_author: false` keeps someone in
+# CONTRIBUTORS.md but omits them from CITATION.cff's authors (e.g. early
+# testers who gave feedback but did not author the software). Default: included.
+#
 # USAGE
 # -----
 #   Rscript scripts/sync_contributors.R            # normal run
@@ -320,6 +324,14 @@ build_contributors_md <- function(contribs) {
 build_cff_authors_block <- function(contribs) {
   # yaml::as.yaml() adds a trailing newline; strip it with trimws().
   cff_str <- function(x) trimws(yaml::as.yaml(x), which = "right")
+
+  # A contributor with `cff_author: false` stays in CONTRIBUTORS.md but is left
+  # out of CITATION.cff's authors (and so out of Zenodo's creators) — for people
+  # who gave feedback/testing rather than authoring the software. Absent = TRUE.
+  contribs <- Filter(function(c) !identical(c$cff_author, FALSE), contribs)
+  if (length(contribs) == 0L) {
+    stop("Every contributor has cff_author: false — CITATION.cff needs at least one author.")
+  }
 
   lines <- c("authors:")
   for (contrib in contribs) {
