@@ -1,3 +1,5 @@
+<img src="docs/assets/charon-hex.svg" alt="Charon hex sticker" width="200" align="right">
+
 # Charon
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23189333.svg)](https://doi.org/10.5281/zenodo.23189333)
