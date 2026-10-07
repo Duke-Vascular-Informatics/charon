@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/charon-hex.svg" alt="Charon hex sticker" width="200">
+</p>
+
 # docs/
 
 Workspace-level documentation for shared setup, onboarding, and operations.
