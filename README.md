@@ -1,10 +1,10 @@
 <img src="docs/assets/charon-hex.svg" alt="Charon hex sticker" width="200" align="right">
 
-### Charon
+### **charon**: **C**ontainerized **H**ADES **A**nalytics for **R**esearch in **O**HDSI **N**etworks.**
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23189333.svg)](https://doi.org/10.5281/zenodo.23189333)
 
-**Containerized HADES Analytics for Research in OHDSI Networks.**
+
 
 A reusable scaffold for OMOP CDM observational studies: a pre-configured dev
 container (SQL Server, R 4.5, Java 17), a shared phenotype library, a
