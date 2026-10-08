@@ -17,8 +17,7 @@ to use:
   been verified against the vocabulary, so nobody re-derives them;
 - a **registry of reusable synthetic datasets**, so a new study can develop
   against realistic fake patients without generating its own;
-- **four study templates** (one per kind of repo a study needs) and a
-  convention for splitting a study across repos;
+- **study templates** for generating analysis-specific synthetic data, building ETLs from existing non-OMOP data, running Strategus-based analyses, and generating reports from the aggregate outputs of those analyses;
 - **AI-assistant rules** (`CLAUDE.md`, Copilot instructions) that enforce
   the lab's OHDSI conventions when an assistant writes code for you.
 
@@ -28,12 +27,12 @@ workspace.
 > **Who this README is for.** It assumes you know the basics of OMOP and
 > OHDSI (CDM tables, concept IDs, Athena, ATLAS, HADES), you can read R and
 > Python, and you know roughly what Java is for (HADES uses it through JDBC).
-> It assumes you know **nothing** about this project. Every charon-specific
+> Every charon-specific
 > term is defined the first time it appears, and again in the
 > [glossary](#glossary).
 
 **Contents:**
-[What problem this solves](#what-problem-this-solves) ·
+[What problem this solves](#what-problem-this-solves) (aggregate-first vs. federated, hypothesis-driven design) ·
 [The big picture](#the-big-picture) ·
 [Glossary](#glossary) ·
 [What a study looks like](#what-a-study-looks-like) ·
@@ -47,10 +46,75 @@ workspace.
 
 ## What problem this solves
 
-Real patient data cannot leave the institution that owns it. A multi-site
-study therefore cannot pool data; instead, **the code travels and the data
-stays put**. That creates four practical problems, and charon is built
-around them:
+### The usual approach: aggregate first, analyze second
+
+Many people assume that observational health research has to work like this:
+collect patient-level data from every participating institution into one
+place, *then* analyze it. That approach is getting harder to sustain, because
+of the volume and complexity of what today's EHRs capture:
+
+- **Data use agreements.** Moving patient-level data between institutions
+  triggers privacy, security and legal review at each one. Negotiating
+  data use agreements (DUAs) can take months, and the work repeats for every
+  new study, partner or data element.
+- **Stripped-down data.** To make sharing tolerable, data is de-identified or
+  abstracted down to a limited extract. Exact dates, free-text-derived
+  features, detailed medication and lab histories, and linkage across
+  encounters are often the first things lost, taking much of the analytic
+  richness of the EHR with them.
+- **Bottlenecks.** Even within one institution, analyses typically queue
+  behind a single data abstraction and analysis team that extracts a bespoke
+  dataset for each question.
+
+### The alternative: the code travels, the data stays put
+
+charon supports **federated analysis**. Each institution keeps its data in
+its own secure environment, converted to the OMOP common data model. The
+analysis code is written once, shared, and executed *where the data lives*;
+only **aggregate results** come back. This minimizes the administrative
+burden of a study and still lets the analysis use the full richness of the
+patient-level data in the EHR, because that data is never reduced before
+analysis.
+
+### It also opens up OMOP data inside a single institution
+
+You do not need a multi-site network to benefit. Once an institution's EHR
+data is in OMOP, **any trained individual there can draft and test an
+analysis themselves** — against synthetic data in the dev container — and then
+run the finished, reviewed code in the secure environment. That removes the
+dependency on one data abstraction and analysis team for every study, while
+the standardized vocabulary and shared definitions keep the results
+comparable and reviewable.
+
+### It makes the analysis hypothesis-driven
+
+Because the code is written against synthetic data, **the analysis is
+designed before anyone sees a real result**. The team can:
+
+- build the cohorts and check that they behave sensibly;
+- choose the analytic strategy (covariates, comparison method, outcome
+  models, sensitivity analyses);
+- build the publication-ready tables and figures, end to end.
+
+Aside from data-quality checks, nothing about the real data informs these
+choices. The finished code is committed and reviewed in git, then run once in
+the secure environment. This follows the scientific method more honestly than
+exploring the real data until something looks interesting: with no results to
+peek at, there is little opportunity for the forking-paths and repeated
+re-analysis that produce "p-hacking". The git history shows exactly what was
+specified before the real run, and any change afterwards is a visible,
+reviewable deviation rather than a silent one. (Study protocols can also be
+hosted privately on OSF; see `osf/`.)
+
+Synthetic data does not tell you what the real effect is, only that the
+pipeline works and the plan is sound. The real run is still where data
+quality is assessed, and findings from it should be reported as pre-specified
+or as clearly labelled post-hoc deviations.
+
+### What charon has to solve
+
+Running code you cannot watch, against data you cannot see, creates four
+practical problems, and charon is built around them:
 
 1. **You need somewhere safe to write the code.** You cannot develop against
    real patients on a laptop. charon runs everything against *synthetic*
