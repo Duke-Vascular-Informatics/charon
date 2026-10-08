@@ -1,99 +1,141 @@
 # Getting Started: Workspace-First Workflow
 
-> **Start here if you are new.**
->
-> Follow the steps in order. Each step is a hard prerequisite for the next.
+> **Start here after reading the [README](../README.md).** Follow the steps in
+> order; each is a prerequisite for the next.
 
-This guide sets up the `<workspace-root>` on your computer — a shared
-environment that handles R, SQL Server, and all OHDSI analysis tools automatically.
-You do not need prior command-line experience; this guide will tell you exactly
-where and how to run any commands that are required.
+This guide takes you from a blank machine to a working workspace: a SQL Server
+database with the OMOP vocabulary loaded, a dev container with R, Java and
+HADES, and your first study repos.
+
+**Assumed background:** you know OMOP/OHDSI basics (CDM tables, concept IDs,
+Athena), can read R and Python, and know what Java is used for here (JDBC).
+You are expected to be comfortable with git and a terminal. **Not assumed:**
+anything about this project — if a term is unfamiliar, see the
+[README glossary](../README.md#glossary).
 
 Detailed references:
 - GitHub auth details: [GIT_GITHUB_AUTH.md](GIT_GITHUB_AUTH.md)
 - Vocabulary load troubleshooting: [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md)
 - ETL troubleshooting: [TROUBLESHOOTING_ETL.md](TROUBLESHOOTING_ETL.md)
 
-**Total time (first setup):** ~1.5–2 hours  
-— 10 min installs + 2 min clone + 15–25 min .env + container build + 30–60 min vocabulary load  
-**Repeat-study time:** ~10–20 minutes (packages and SQL Server already running)  
-**Requires:** ~35 GB disk space, **16 GB RAM strongly recommended** (8 GB is the bare
-minimum and risks an out-of-memory failure during the vocabulary load — see Step 3.1),
-active internet
+**Total time (first setup):** ~1.5–2 hours — 15 min installs and clone, 15–25
+min `.env` and container build, 30–60 min vocabulary load.
+**Repeat-study time:** ~10–20 minutes (packages cached, SQL Server already
+running; start at Step 10).
+**Before you start:** find out which R, Java and Python versions your secure
+analytics environment uses ([Step 6.0](#60-match-the-container-to-your-secure-environment-before-the-first-build)).
+**Requires:** ~35 GB of disk, **16 GB RAM allocated to Docker** (12 GB is the
+minimum; below that the vocabulary load is killed by the OS with no error —
+see Step 3.1), and internet access.
 
-**Setup order — do not skip ahead:**
-1. Create a GitHub account
-2. Install Git
-3. Install Docker Desktop
-4. Install VS Code and the Dev Containers extension
-5. Clone the `<workspace-root>` repository
-6. Configure your `.env` file and build the dev container
-7. Verify your environment
-8. Download OMOP vocabulary files
-9. Load vocabulary into SQL Server
-10. Create your analysis-core study repo and your report repo
-11. Define your study (cohort SQL, covariates, parameters) and run the workflow
+**What you will build, in order:**
 
-> **Steps 1–9 are the same regardless of which study template you end up
-> using.** Step 10 is where the path branches — see
-> [Step 10.0: Choose Your Templates](#step-100-choose-your-templates-and-create-your-repos)
-> below. This guide documents the `synthea-omop-template` path
-> (Steps 10–11) in full, because it is still the most detailed
-> reference for the underlying OMOP concepts (cohorts, covariates, vocabulary
-> lookup) even for a study built on `strategus-study-template` instead — that
-> template has its own `CHECKLIST.md` and `docs/UsingThisTemplate.md` for the
-> Strategus-specific mechanics. **Every study, on either path, also gets a
-> separate report repo** built from `omop-report-template` — see Step 10.4.
+1. A GitHub account
+2. Git
+3. Docker Desktop
+4. VS Code and the Dev Containers extension
+5. A clone of the workspace repo
+6. A `.env` file, and the dev container
+7. A verified environment
+8. OMOP vocabulary files (from Athena)
+9. The vocabulary loaded into SQL Server
+10. Your study repos (analysis-core and report)
+11. A study running end to end
+
+> **Steps 1–9 are identical for every study.** Step 10 creates your repos:
+> the **analysis-core** repo (`strategus-study-template`) holds *all* of the
+> analysis, and the **report** repo (`omop-report-template`) holds the
+> manuscript; each template has its own `CHECKLIST.md` you follow from there.
+> Step 11 covers `synthea-omop-template`, which is used **only** to generate
+> analysis-specific synthetic data in a `-synth` repo. If you will only
+> *consume* a synthetic dataset that already exists, skip Step 11 (see
+> [`synthetic_data/README.md`](../synthetic_data/README.md)).
+
+---
+
+## Primer: Git, GitHub, cloning and VS Code
+
+You do not need to be a git expert, but you do need this mental model, because
+the whole workspace is built on it.
+
+**Why version control matters for observational research.** A published
+estimate is only as trustworthy as your ability to show exactly how it was
+produced. Git records every change to code, cohort definitions and concept
+sets as a permanent, attributed, timestamped history. That gives you:
+
+- **Transparency** — anyone can see who changed a cohort's inclusion criteria,
+  when, and why (the commit message and PR description).
+- **Reproducibility** — a result can be tied to one exact commit, so "the code
+  that produced Table 2" is a specific, retrievable version, not "whatever was
+  on my laptop". Combined with the pinned `renv.lock`, the code *and* its
+  package versions can be rebuilt later.
+- **Review** — changes reach `main` only through a pull request, so a second
+  person sees every change to a definition before it becomes the shared one.
+- **Safe collaboration** — each person works on their own branch, so
+  experiments never overwrite a colleague's work, and any mistake can be
+  undone.
+
+**The vocabulary you need:**
+
+| Term | Meaning |
+|---|---|
+| **Repository (repo)** | A project folder plus its full change history. |
+| **Git vs GitHub** | Git is the tool that tracks history on your machine. GitHub is the website that hosts shared copies and runs pull requests. |
+| **Clone** | Download a repo, history included, to your computer. Cloning a repo creates a folder with a hidden `.git/` inside. |
+| **Commit** | A saved snapshot with a message explaining the change. |
+| **Branch** | A parallel line of commits. Yours is named after your GitHub username. |
+| **Push / pull** | Send your commits to GitHub / fetch others' commits from it. |
+| **Pull request (PR)** | A proposal to merge your branch into `main`, where it is reviewed. |
+| **Submodule** | A repo pinned inside another repo. The four templates are submodules of the workspace. |
+
+The everyday loop is: pull the latest `main` → make changes on your branch →
+commit with a clear message → push → open a PR. Never edit `main` directly,
+and never commit secrets or data (`.env`, `omop_vocab/` and any `output/`
+folder are gitignored for this reason). Your AI assistant runs these same git
+commands for you using your credentials, so you remain the author of record;
+read what it proposes before approving a push.
+
+**Why VS Code.** VS Code is the editor, but its real job here is hosting the
+**dev container**: with the Dev Containers extension it opens this workspace
+*inside* the Docker container, so your editor, terminal and R session all run
+in the same pinned environment as your collaborators. It also has built-in git
+(the Source Control panel) if you prefer a UI to the command line.
 
 ---
 
 ## About terminals
 
-Several steps use short commands. This guide uses two different "terminals"
-depending on where you are in setup:
+This guide uses two different terminals:
 
-**Your system terminal** (used only in Steps 2 and 8):
-- **Mac:** open the **Terminal** app (search "Terminal" in Spotlight with `Cmd+Space`)
-- **Windows:** open **PowerShell** (press `Win`, type `powershell`, press Enter)
-
-**The VS Code container terminal** (used in Steps 7 onward, after the container builds):
-Inside VS Code, press `` Ctrl+` `` (Windows/Linux) or `` Cmd+` `` (Mac) to open a
-terminal panel at the bottom of the screen. Once the dev container is running, this
-terminal is *inside* the container where R and all analysis tools are installed.
+- **Your system terminal** — Terminal.app (Mac) or PowerShell (Windows).
+  Used only in Steps 2 and 8, before the container exists.
+- **The container terminal** — a terminal inside VS Code (`` Ctrl+` `` /
+  `` Cmd+` ``) after the dev container is running. This shell is *inside* the
+  container, where R, Java and the HADES packages live. Everything from
+  Step 7 onward runs here unless stated.
 
 ---
 
 ## Step 1: Create a GitHub Account (2 minutes)
 
-GitHub is where the workspace code lives and where you will push your study code.
+Your GitHub **username becomes your working-branch name** in every repo, and
+your assistant uses it to detect which branch is yours, so pick one you are
+happy to keep.
 
-If you already have a GitHub account, skip to Step 2.
+1. Sign up at [github.com](https://github.com) with your institutional email
+   (the Free plan is enough).
+2. Ask the workspace maintainer to add you as a collaborator on the workspace
+   repo and on any study repos you will work in.
 
-1. Go to [github.com](https://github.com) and click **Sign up**
-2. Choose a username, enter your institutional email, and complete verification
-3. Select the **Free** plan
-
-> You will create a GitHub Personal Access Token (PAT) in Step 6 when you
-> configure your secrets file — no need to do anything else here.
+You will create a personal access token in Step 6.
 
 ---
 
 ## Step 2: Install Git (5 minutes)
 
-Git tracks every change to your study code and enables collaboration.
-
-### 2.1 Download and install
-
-- Go to [git-scm.com/downloads](https://git-scm.com/downloads)
-- Download and run the installer for your operating system
-- On Windows, accept the default options
-
-### 2.2 Set your name and email (one-time)
-
-Git needs to know who you are so it can label your changes.
-
-Open your **system terminal** (see the "About terminals" section above) and run
-these three lines one at a time, replacing the example values with your own:
+1. Install from [git-scm.com/downloads](https://git-scm.com/downloads)
+   (accept the defaults on Windows).
+2. In your **system terminal**, set your identity:
 
 ```bash
 git config --global user.name "Your Name"
@@ -105,773 +147,579 @@ git config --global init.defaultBranch main
 
 ## Step 3: Install Docker Desktop (5 minutes)
 
-Docker Desktop runs the SQL Server database and the R analysis environment.
-It must be running before you open the workspace.
+Docker runs both the SQL Server database and the dev container, so it must be
+running whenever you work.
 
-- Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
-- Download and run the installer for your operating system
-- Launch Docker Desktop and wait until the icon in your menu bar / taskbar shows **"Engine running"**
-
-> **Apple Silicon (M1/M2/M3/M4):** Docker Desktop runs natively — no Rosetta needed.
+Install from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/),
+launch it, and wait for **"Engine running"**. Apple Silicon is supported
+natively; the database image (`azure-sql-edge`) is ARM64-native.
 
 ### 3.1 Configure disk and memory limits
 
-After installing Docker Desktop, open **Settings → Resources → Advanced** and set:
+In **Settings → Resources → Advanced**:
 
-| Setting | Recommended value | Why |
+| Setting | Value | Why |
 |---|---|---|
-| **Virtual disk limit** | **80 GB** | The workspace needs ~30–35 GB (images + SQL Server + vocabulary). The default can be 200+ GB and will grow unchecked with failed builds. 80 GB leaves headroom for build cache. |
-| **Memory** | **16 GB** (12 GB minimum) | The one-time vocabulary load (Step 9) reads multi-GB CSVs fully into R memory — the 6.3M-row CONCEPT table alone peaks near 12 GB. At 8 GB the loader is OOM-killed mid-load (a silent exit with no error). The loader caps SQL Server's memory automatically to maximise headroom, but 16 GB is the reliable target. If your machine has only 16 GB physical RAM, give Docker 12 GB and leave the rest for the OS. |
+| **Virtual disk limit** | **60–80 GB** | The workspace uses ~35 GB (image, loaded vocabulary, R packages). Extra room is for build cache. The default can be 200+ GB and grows unchecked when builds fail. |
+| **Memory** | **16 GB** (12 GB minimum) | The vocabulary loader reads multi-GB CSVs fully into R — the 6.3M-row `CONCEPT` table alone peaks near 12 GB. At 8 GB the Linux OOM killer ends the loader silently. If your machine has 16 GB total, give Docker 12 GB. |
 
-> **The loaded vocabulary persists** on a Docker volume — it survives container
-> rebuilds and Docker restarts, so you only load it once (Step 9). It is **not**
-> lost on a normal rebuild.
+> **The loaded vocabulary persists** on a Docker volume (`mssql_dev_data`). It
+> survives container rebuilds and Docker restarts, so you load it once.
 
-> **If Docker is already using too much disk** (e.g., 100+ GB from prior failed builds),
-> reclaim build cache and unused images with:
+> **Reclaiming disk.** If Docker is using 100+ GB from old builds, clear the
+> build cache and unused images only:
 > ```bash
 > docker image prune -a
 > docker builder prune -a
 > ```
->
-> ⚠️ **Do not run `docker system prune --volumes`** unless you intend to wipe the
-> database. The `--volumes` flag deletes the SQL Server data volume — including the
-> loaded OMOP vocabulary — and it is **not** re-downloaded automatically; you would
-> have to repeat the 30–60 minute Step 9 load. Only use `--volumes` as a deliberate
-> full reset, and re-run Step 9 afterwards.
+> ⚠️ **Never add `--volumes`** (e.g. `docker system prune --volumes`) unless you
+> intend a full reset. It deletes the SQL Server data volume, including the
+> loaded vocabulary, and nothing re-downloads it — you would repeat Steps 8–9.
 
 ---
 
 ## Step 4: Install VS Code and the Dev Containers Extension (5 minutes)
 
-VS Code is the code editor that hosts the dev container.
+1. Install VS Code from [code.visualstudio.com](https://code.visualstudio.com).
+2. In the Extensions panel, install **Dev Containers**
+   (`ms-vscode-remote.remote-containers`).
 
-> **AI coding assistant:** Claude Code is installed automatically when the dev
-> container builds in Step 6 — no manual installation needed here.
-
-### 4.1 Install VS Code
-
-- Go to [code.visualstudio.com](https://code.visualstudio.com)
-- Download and run the installer for your operating system
-- Launch VS Code
-
-### 4.2 Install the Dev Containers extension
-
-Inside VS Code:
-1. Click the **Extensions** icon in the left sidebar (it looks like four squares)
-2. In the search box, type `ms-vscode-remote.remote-containers`
-3. Click **Install** on the **Dev Containers** extension by Microsoft
+The Claude Code assistant is installed automatically when the container
+builds — nothing to do here.
 
 ---
 
 ## Step 5: Clone the Workspace Repository (2 minutes)
 
-"Cloning" downloads a copy of the workspace code to your computer.
-
-### Option A: Clone via VS Code (recommended — no terminal needed)
-
-1. Open VS Code
-2. Click the **Source Control** icon in the left sidebar (it looks like a branch)
-3. Click **Clone Repository**
-4. Paste this URL:
-   ```
-   https://github.com/<your-org>/<your-workspace-repo>.git
-   ```
-5. Choose a folder where you want to keep your research code (e.g., your home folder or Documents)
-6. Click **Open** when VS Code offers to open the cloned repository
-
-### Option B: Clone via terminal
-
-Open your **system terminal**, navigate to where you want to keep your code,
-and run:
+The workspace repo is the infrastructure repo (your lab's copy of charon). From
+your **system terminal**, in the folder where you keep code:
 
 ```bash
-git clone https://github.com/<your-org>/<your-workspace-repo>.git
+git clone --recurse-submodules https://github.com/<your-org>/<your-workspace-repo>.git
+cd <your-workspace-repo>
 ```
+
+`--recurse-submodules` also fetches the four template submodules
+(`synthea-omop-template`, `omop-etl-template`, `strategus-study-template`,
+`omop-report-template`). If you cloned without it, run
+`git submodule update --init`. This folder is your **workspace root**
+(`<workspace-root>` in these docs); inside the container it appears as
+`/workspace`.
+
+You can also clone from VS Code (**Source Control → Clone Repository**).
 
 ---
 
-## Step 6: Configure Your `.env` File and Build the Dev Container (15–25 minutes)
+## Step 6: Configure Your .env File and Build the Dev Container (15–25 minutes)
 
-This step creates your local secrets file, fills in three required values, and
-builds the dev container. Do all sub-steps in order.
+### 6.1 Create `.env`
 
-### 6.1 Create your `.env` file
+`.env` holds your secrets and is gitignored. Copy the template:
 
-VS Code should now show the `<workspace-root>` folder in the file explorer
-(left sidebar). You will see a file called `.env.example`.
-
-**In VS Code's file explorer:**
-1. Right-click `.env.example` and select **Copy**
-2. Right-click an empty area in the same folder and select **Paste**
-3. A copy appears — right-click it and select **Rename**
-4. Name it `.env` (remove `.example` from the end) and press Enter
-
-This creates a private secrets file that the dev container will read at startup.
-Keep `.env.example` in place as a reference.
-
-> `.env` is gitignored — it will never be accidentally committed to GitHub.
-
-### 6.2 Set your Anthropic API key
-
-In VS Code's file explorer, click `.env` to open it.
-
-Find the line:
-
-```
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```bash
+cp .env.example .env
 ```
 
-Replace `your_anthropic_api_key_here` with your key from
-[console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
+(Windows PowerShell: `Copy-Item .env.example .env`.) Keep `.env.example` as a
+reference. Open `.env` in VS Code and set the three values below. The other
+variables have working defaults for local development; leave them.
 
-### 6.3 Create a GitHub Personal Access Token and paste it
+### 6.2 `ANTHROPIC_API_KEY`
 
-Find the line:
+Your key from [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
+It lets Claude Code run inside the container.
+
+### 6.3 `GH_TOKEN`
+
+A GitHub personal access token. One token serves two purposes: it lets the
+assistant commit, push and open PRs as you, and the container reuses it as
+`GITHUB_PAT` so `renv` can restore HADES packages hosted on GitHub without
+hitting the 60-requests-per-hour anonymous rate limit (which a shared
+university network exhausts quickly, failing the container build).
+
+1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
+2. Name it after the workspace repo; expiration 90 days.
+3. Repository permissions: **Contents: Read-only**, **Pull requests: Read and write**.
+4. Generate, copy it immediately, and paste it into `.env`.
+
+### 6.4 `MSSQL_SA_PASSWORD`
+
+The password for the SQL Server `SA` account, which you choose. It needs 8+
+characters with upper, lower, digit and a symbol (`@ # $ %`). **Do not use
+`!`.** It must stay the same for the life of the database volume — changing
+it later causes "Login failed for user 'SA'" (see
+[SETUP.md](SETUP.md#troubleshooting)).
+
+Save `.env`.
+
+### 6.0 Match the container to your secure environment (before the first build)
+
+Code you write here is later **run in your institution's secure analytics
+environment**, so the container must use the same R, Java and Python versions
+that environment provides. The defaults (R 4.5.2, Java 17, Python 3.12) are
+those of the environment charon was originally built for — they are almost
+certainly **not** yours. Mismatches cause real failures: packages locked for
+one R version that won't install on another, `rJava`/JDBC behaviour that
+differs by Java version, and Python models (pickles) that only load under the
+library versions that created them.
+
+**1. Find your secure environment's versions.** Ask its administrators, or run
+these there:
+
+```bash
+R -e 'R.version.string'      # R version
+java -version                # Java (JDK) version
+python3 --version            # Python version (and `pip list` for scikit-learn, numpy, pandas)
+```
+
+Also note how packages get there (an internal CRAN/Posit mirror, a frozen
+snapshot date, prebuilt binaries only), because the pinned `renv.lock` must be
+installable from it.
+
+**2. Set the versions in `.env`** (uncomment and edit the three lines in the
+"Toolchain versions" block of `.env.example`'s copy):
 
 ```
-GH_TOKEN=your_github_pat_here
+R_VERSION=4.4.3
+JAVA_VERSION=11
+PYTHON_VERSION=3.11
 ```
 
-You need to create a token on GitHub and paste it here. This token lets your
-AI coding assistant commit and push code on your behalf, and lets R install packages
-from GitHub without hitting rate limits.
+- `R_VERSION` must be a tag of [`rocker/r-ver`](https://hub.docker.com/r/rocker/r-ver/tags).
+  If the exact patch release you need isn't published, use the closest one
+  with the same minor version. The tag also fixes the Ubuntu release.
+- `JAVA_VERSION` is an OpenJDK major version (8, 11, 17, 21…) that is available
+  from `apt` on that Ubuntu release. If the build fails with "Unable to locate
+  package openjdk-N-jdk-headless", that version isn't offered there; pick a
+  different `R_VERSION` or JDK.
+- `PYTHON_VERSION` is any CPython that `uv` can install. The virtualenv at
+  `/opt/mlenv` also pins `scikit-learn==1.2.2` and `numpy<2.0` in
+  `.devcontainer/Dockerfile`; change those to your secure environment's
+  versions (or to whatever version created any stored model you will load).
 
-**Create the token (takes 2 minutes):**
+**3. If you changed `R_VERSION`, reconcile `renv.lock`.** The workspace
+`renv.lock` records R 4.5.2 and the package versions built for it. After
+the first build with your R version, run in the container terminal:
 
-1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
-2. Name it something recognizable, e.g. your workspace repo's name
-3. Set expiration to **90 days** (you can regenerate it when it expires)
-4. Under **Repository permissions**, set:
-   - **Contents:** Read-only
-   - **Pull requests:** Read and write
-5. Click **Generate token** — copy the value immediately (you cannot view it again)
-
-Back in `.env`, replace `your_github_pat_here` with the token you just copied.
-
-### 6.4 Set your SQL Server password
-
-Find the line:
-
-```
-MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+```r
+renv::status()      # shows packages out of sync with the lockfile or the R version
+renv::restore()     # if packages fail to install, an older R may need older package versions
+renv::snapshot()    # once working, record the new R version and package set
 ```
 
-Replace it with a strong password you choose. Requirements:
-- At least 8 characters with a mix of upper, lower, digit, and special character (`@`, `#`, `$`, `%`)
-- Do NOT use `!`
-- Example: `SqlServer@2024`
+Commit the updated `renv.lock` in a PR. Study repos have their own lockfiles
+(Strategus repos pin a large set), so repeat this in each repo you use. Where a
+locked package version cannot be installed on your R version, pick the newest
+version that your secure environment's package source also offers.
 
-**Save and close `.env`** (press `Ctrl+S` / `Cmd+S`).
+**4. Record the decision** in `WORKSPACE_ROSTER.md` ("Secure-environment
+toolchain") so collaborators and future you know what the container targets.
 
-### 6.5 Build the dev container
+**5. Verify after the build** (Step 7): `R --version`, `java -version`,
+`/opt/mlenv/bin/python --version` should each print your versions. Change
+versions **before** you start real work and rebuild with
+**Dev Containers: Rebuild Container**; switching mid-study changes the
+environment your earlier results were produced in.
 
-Make sure Docker Desktop is running (check your menu bar / taskbar).
+### 6.5 Build the container
 
-In VS Code, press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open
-the command palette, type `Dev Containers: Reopen in Container`, and press Enter.
+With Docker running, in VS Code open the workspace folder, press
+`Ctrl/Cmd+Shift+P`, and run **Dev Containers: Reopen in Container**.
 
-VS Code may also show a pop-up notification — **"Folder contains a Dev Container.
-Reopen in Container?"** — in which case you can just click that.
+The first build takes 10–20 minutes:
 
-**What happens during the first build (10–20 minutes):**
+1. Builds the image: R (`rocker/r-ver:$R_VERSION`), the JDK, system libraries,
+   a Python virtualenv at `/opt/mlenv`, and Claude Code — at the versions you
+   set in 6.0 (defaults: R 4.5.2, Java 17, Python 3.12).
+2. Starts the SQL Server container (`mssql_dev`) alongside the dev container
+   on a shared Docker network.
+3. Restores the workspace `renv.lock` (full HADES + tidyverse stack). Packages
+   are cached in a Docker volume, so later rebuilds take about a minute.
 
-1. Downloads the R 4.5 + Java 17 base image
-2. Installs system tools and the Claude Code AI assistant
-3. Starts the SQL Server database container
-4. Installs the full R package library (HADES + tidyverse)
-
-A progress indicator appears in the bottom-right corner. When it finishes, the
-VS Code status bar at the bottom shows the container name.
-
-> **First build takes 10–20 minutes.** Later rebuilds take under a minute because
->
-> **Claude Code defaults to Haiku** to keep token costs low. Haiku handles most
-> routine tasks (file edits, git, running scripts). Switch to Sonnet with
-> `/model sonnet` when writing new analysis code or debugging complex errors.
-> See `CLAUDE.md` → "Model Selection" for full guidance.
-> packages are cached.
+> **Claude Code model:** the container defaults to Haiku to keep costs low. It
+> handles file edits, git and running scripts well. Switch with `/model sonnet`
+> when writing new analysis code or debugging, and `/model opus` for study
+> design. See `CLAUDE.md` → "Claude Code Model Selection".
 
 ---
 
 ## Step 7: Verify Your Environment (2 minutes)
 
-Once the build completes, confirm everything is working.
-
-Open the **VS Code container terminal** (`` Ctrl+` `` / `` Cmd+` ``) and run:
+In the **container terminal**:
 
 ```bash
 echo $IN_DEV_CONTAINER          # Should print: true
-R --version                     # Should show: R version 4.5.x
+R --version                     # Should show your R_VERSION (default 4.5.2)
+java -version                   # Should show your JAVA_VERSION (default 17)
+/opt/mlenv/bin/python --version # Should show your PYTHON_VERSION (default 3.12)
 echo $MSSQL_HOST                # Should print: mssql_dev
-docker ps                       # Should show mssql_dev as healthy
 ```
 
-> If `$MSSQL_HOST` prints nothing (empty), see
-> [Troubleshooting: "Connection refused" on `localhost:1433`](#connection-refused-on-localhost1433)
-> below — it usually means the container needs to be rebuilt.
+`docker ps` should also list `mssql_dev` as healthy (the host's Docker
+socket is mounted into the container, so this works from inside).
 
-### Authenticate git for your AI assistant
-
-Run this once so the AI coding assistant can commit and push on your behalf:
+Authenticate `gh` for your assistant:
 
 ```bash
 gh auth login --with-token <<< "$GH_TOKEN"
 gh auth status          # Should show: Logged in to github.com
 ```
 
-### Enable the Zotero reference library (2 minutes, optional but recommended)
+> If `$MSSQL_HOST` is empty, or R reports "connection refused" on
+> `localhost:1433`, see
+> [Troubleshooting](#connection-refused-on-localhost1433).
 
-The workspace ships a shared MCP server configuration (`.mcp.json`) that lets an
-AI assistant read the lab's Zotero group library — so it can pull references
-into a report instead of you pasting citations by hand. The configuration is
-shared; **the credentials are personal and never committed.**
+**You do not create the database by hand.** The vocabulary loader in Step 9
+creates `omop_synth` if it is missing.
 
-1. Create a **read-only** personal API key at
-   <https://www.zotero.org/settings/keys>.
-2. Get the group library ID from the URL `zotero.org/groups/<ID>/library` —
-   ask if you're unsure which group.
-3. Add both to the `.env` you created in Step 6 (the variable names are already
-   stubbed in `.env.example`):
+### Optional: Zotero reference library
 
-   ```bash
-   ZOTERO_API_KEY=<your personal key>
-   ZOTERO_GROUP_ID=<the lab group id>
-   ```
-
-4. Rebuild the container so the variables are picked up
-   (`Cmd+Shift+P` → **Dev Containers: Rebuild Container**), then confirm:
-
-   ```bash
-   [ -n "$ZOTERO_API_KEY" ] && echo "Zotero configured" || echo "Not set — check .env, then rebuild"
-   ```
-
-Skipping this is harmless — the Zotero server just won't start. Full details,
-including how to verify from an assistant session, are in
+If your workspace root contains an `.mcp.json`, it configures an MCP server
+that lets the assistant read your lab's Zotero group library. To enable it, set
+`ZOTERO_API_KEY` (a personal, read-only key from
+[zotero.org/settings/keys](https://www.zotero.org/settings/keys)) and
+`ZOTERO_GROUP_ID` (from `zotero.org/groups/<ID>/library`) in `.env`, then
+**Dev Containers: Rebuild Container**. Details:
 [SETUP.md → Step 5b](SETUP.md#step-5b--mcp-servers-shared-config-personal-credentials).
+If there is no `.mcp.json`, skip this; nothing else depends on it.
 
-> **Keep reference PDFs in Zotero, not in a repo's `docs/` folder.** `docs/` is
-> for workspace and study documentation. Papers belong in the group library,
-> where they're shared, versioned, and reachable from an analysis session — and
-> out of git.
-
-### The shared database is created automatically
-
-The SQL Server container is now running. You do **not** need to create the
-`omop_synth` database manually — the vocabulary loader in Step 9 creates it
-automatically on first run (it is idempotent and does nothing if the database
-already exists). Just proceed to Step 8.
-
-> All commands from this point forward run in the **VS Code container terminal**
-> unless stated otherwise.
+Keep reference PDFs in Zotero, not in a repo's `docs/` folder.
 
 ---
 
 ## Step 8: Download OMOP Vocabulary Files (30–60 minutes, one-time)
 
-The OMOP vocabulary maps clinical codes to standard concepts. Download it once;
-it does not need to be repeated for each new study.
+Every study on this machine reads the same loaded vocabulary, so you do this
+once. **The vocabulary files are licensed and are never committed or shared**;
+each person downloads their own.
 
 ### 8.1 Download from Athena
 
-1. Go to [athena.ohdsi.org](https://athena.ohdsi.org) and sign in (free account)
-2. Click **Download** → **Create new download**
-3. Select these vocabulary bundles:
+1. Sign in at [athena.ohdsi.org](https://athena.ohdsi.org) → **Download** →
+   **Create new download**.
+2. Select these vocabularies:
 
 | Vocabulary | Required | Notes |
 |---|---|---|
-| **SNOMED** | ✅ | Primary clinical vocabulary |
-| **RxNorm** | ✅ | Drug ingredients |
-| **RxNorm Extension** | ⭐ | Drugs not in RxNorm |
-| **LOINC** | ✅ | Lab measurements |
-| **ICD10CM** | ✅ | US diagnoses |
-| **CPT4** | ⭐ | US procedures (requires UMLS key) |
-| **HCPCS** | ⭐ | US outpatient procedures |
-| **ICD10PCS** | ⭐ | US inpatient procedures |
-| **Visit** | ✅ | Visit types |
-| **Gender / Race / Ethnicity** | ✅ | Demographics |
-| **UCUM** | ✅ | Units of measure |
+| SNOMED | ✅ | Primary clinical vocabulary |
+| RxNorm | ✅ | Drug ingredients |
+| RxNorm Extension | ⭐ | Drugs not in RxNorm |
+| LOINC | ✅ | Measurements |
+| ICD10CM | ✅ | US diagnoses |
+| CPT4 | ⭐ | US procedures (needs UMLS key — 8.3) |
+| HCPCS | ⭐ | US outpatient procedures |
+| ICD10PCS | ⭐ | US inpatient procedures |
+| Visit | ✅ | Visit types |
+| Gender / Race / Ethnicity | ✅ | Demographics |
+| UCUM | ✅ | Units |
 
-4. Accept the license and click **Download**
+3. Accept the license and download (a 2–5 GB zip).
 
-### 8.2 Extract into the workspace
+### 8.2 Place it in the workspace
 
-Once the zip file downloads:
+Extract the zip so that the **CSV files sit directly inside** a folder named
+`omop_vocab/` at the workspace root — `omop_vocab/CONCEPT.csv`, not
+`omop_vocab/<download-name>/CONCEPT.csv`. The container mounts this folder
+read-only at `/omop_vocab`. (If the folder did not exist when the container
+started, rebuild the container so the mount appears.)
 
-**Mac:** Double-click the zip file to extract it. Then move the resulting folder
-into your `<workspace-root>/` folder and rename it `omop_vocab`.
+### 8.3 Optional: rebuild CPT-4
 
-**Windows:** Right-click the zip file and select **Extract All**. Move the
-extracted folder into `<workspace-root>/` and rename it `omop_vocab`.
+**Skip this if you did not select CPT4.** CPT-4 is owned by the AMA, so Athena
+ships only a Java utility (`cpt4.jar`, run by `cpt.sh`) that fetches the codes
+from the NLM using your free UMLS account.
 
-The folder should contain a file called `CONCEPT.csv` directly inside `omop_vocab/`.
-
-### 8.3 Optional: Rebuild CPT-4 codes
-
-**Skip this section if you did not select CPT-4 in your Athena download.**
-
-> **Why a separate step?** CPT-4 procedure codes are owned by the American Medical
-> Association and cannot be distributed directly by Athena. The Athena download
-> includes a small Java utility (`cpt4.jar`) that fetches them from the U.S. National
-> Library of Medicine (NLM) API — but you need a free NLM/UMLS account to use it.
->
-> **Can I skip this for now?** Yes. You can load the vocabulary without CPT-4 and
-> re-run this step later. Procedures coded only as CPT-4 will show as unmapped until
-> then; SNOMED-CT equivalents cover most common procedures.
-
-#### Part A — Get a free UMLS API key
-
-1. Go to [uts.nlm.nih.gov](https://uts.nlm.nih.gov) and click **Sign Up** (top right)
-2. Fill in your details using your institutional email — approval is usually same-day;
-   check your inbox for a confirmation email and click the link inside it
-3. After confirming, log back in at [uts.nlm.nih.gov](https://uts.nlm.nih.gov)
-4. Click your name (top right) → **My Profile**
-5. On the profile page, find the **API Key** section — your key is the long string of
-   letters and numbers next to the label. Copy it.
-
-> Your API key looks like: `a1b2c3d4-e5f6-7890-abcd-ef1234567890`  
-> Keep it safe — it authenticates downloads from the NLM on your behalf.
-
-#### Part B — Run the rebuild script from inside the dev container
-
-The dev container already has Java 17 installed and has `omop_vocab/` mounted at
-`/omop_vocab`. Running the script from there is simpler than installing Java on
-your host machine.
-
-In the **VS Code container terminal**:
+1. Create a UMLS account at [uts.nlm.nih.gov](https://uts.nlm.nih.gov)
+   (approval is usually same-day), then copy the API key from
+   **My Profile**.
+2. In the **container terminal** (Java is already installed there):
 
 ```bash
 cd /omop_vocab
-
-# Paste your UMLS API key in place of YOUR_API_KEY_HERE
 bash cpt.sh YOUR_API_KEY_HERE
 ```
 
-**What the script does:**
-1. Connects to the NLM API and authenticates with your key
-2. Downloads all CPT-4 concept rows
-3. Saves them to `CONCEPT_CPT4.csv` in the same folder
-4. Appends the CPT-4 rows into `CONCEPT.csv`
-
-**Expected output (success):**
-```
-Generating CPT4 file...
-Downloading CPT4 batch 1 of N...
-...
-CPT4 file generated successfully.
-```
-
-The script takes **5–15 minutes** and requires an active internet connection.
-Do not close the terminal or interrupt it mid-run — the Athena script itself warns
-that interruption can corrupt `CONCEPT.csv`.
-
-**After the script finishes**, confirm `CONCEPT_CPT4.csv` was created:
-
-```bash
-ls -lh /omop_vocab/CONCEPT_CPT4.csv
-# Should show a file of several MB
-```
-
-> **Already ran this once?** If `CONCEPT_CPT4.csv` already exists in `omop_vocab/`,
-> the CPT-4 rows are already in `CONCEPT.csv`. You do not need to re-run the script
-> unless you are rebuilding the vocabulary from scratch.
+This takes 5–15 minutes and writes `CONCEPT_CPT4.csv`, appending the rows to
+`CONCEPT.csv`. **Do not interrupt it** — the script warns that doing so can
+corrupt `CONCEPT.csv`. Check with `ls -lh /omop_vocab/CONCEPT_CPT4.csv`
+(several MB). Skipping this is safe; CPT-4-only procedures will just be
+unmapped until you run it, and SNOMED covers most common procedures.
 
 ---
 
 ## Step 9: Load OMOP Vocabulary into SQL Server (30–60 minutes, one-time)
 
-The vocabulary files on disk need to be loaded into the database. This is a
-one-time step per machine.
-
-All commands in this step run in the **VS Code container terminal**, from the
-workspace root.
-
-### 9.1 Run the vocabulary loader
+From the workspace root, in the **container terminal**:
 
 ```bash
 Rscript infrastructure/scripts/setup_omop_vocab_schema.R --study-dir synthea-omop-template
 ```
 
-This single command handles everything automatically — there is no manual
-database-creation step:
+The loader does everything, including database creation:
 
-1. **Creates the `omop_synth` database** if it does not already exist.
-2. **Checks available RAM** and warns if there is less than ~12 GB (below which
-   the load risks running out of memory — raise Docker's memory to 16 GB first).
-3. **Caps SQL Server's memory** for the duration of the load so its buffer pool
-   cannot starve the R loader, then restores a balanced value for analysis when
-   done.
-4. **Loads all vocabulary tables** from `omop_vocab/` and builds indexes.
+1. Creates the `omop_synth` database if missing.
+2. Checks RAM and warns below ~12 GB.
+3. Caps SQL Server's memory during the load so it cannot starve R, then
+   restores a balanced value afterward.
+4. Creates the `omop_vocab` schema and the vocabulary tables, bulk-loads the
+   CSVs, and builds indexes.
 
-Expect 30–60 minutes. It reads multi-GB CSVs into memory (CONCEPT_ANCESTOR alone
-is ~75M rows), so leave it running and do not interrupt it.
+(`--study-dir` just tells the script which repo's helper code to use; leave it
+as shown.) `CONCEPT_ANCESTOR` alone is ~75M rows, so leave it running.
 
-**Expected output (tail):**
+**Expected tail of the output:**
 ```
-[INFO] ✓ Target database 'omop_synth' present (created if missing)
-[INFO] ✓ SQL Server memory capped at 2048 MB for the load ...
-...
 [INFO] ✓ Vocabulary loaded successfully into 'omop_vocab'
-[INFO] ✓ SQL Server memory restored to N MB for analysis workloads
 === Setup complete ===
 ```
 
-> **If it exits silently with no error** part-way through (e.g. while loading
-> CONCEPT), that is the Linux OOM killer — your Docker memory is too low. Raise
-> Docker Desktop → Resources → Memory to 16 GB, restart, and re-run. The loader
-> is safe to re-run: it skips automatically once the vocabulary is fully loaded.
+> A silent exit partway through is the Linux OOM killer: raise Docker's memory
+> to 16 GB, restart, and re-run. The loader is safe to re-run and skips once
+> the vocabulary is fully loaded.
 
-If loading fails or stalls, see [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md).
+If it fails or stalls, see [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md).
+
+**Sanity check** — look up a concept (this script ships in
+`synthea-omop-template/scripts/`, so run it from there, or ask your assistant
+to run `/concept-lookup diabetes mellitus Condition`):
+
+```bash
+cd synthea-omop-template && Rscript scripts/concept_lookup.R "diabetes mellitus" Condition
+```
+
+You should get SNOMED standard concepts labelled `[vocab query]`.
 
 ---
 
 ## Step 10: Create Your Study Repositories (10 minutes)
 
-A study today is normally **two repos**: an analysis-core repo (cohorts,
-covariates, the pipeline that produces results) and a report repo (the
-manuscript, built from those results). See `README.md`'s
-"Multi-Repo Analysis Pipeline" section for the full picture.
+Pick the repos you need. Most studies need the first two; the third is only for
+generating a new synthetic dataset.
 
-### Step 10.0: Choose Your Templates and Create Your Repos
+| Repo | Create from | When |
+|---|---|---|
+| `<study>` — analysis-core | [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) | Always |
+| `<study>-report` — report | [`omop-report-template`](https://github.com/Duke-Vascular-Informatics/omop-report-template) | Always, even for a purely descriptive study |
+| `<study>-synth` — synthetic data generation only | [`synthea-omop-template`](https://github.com/Duke-Vascular-Informatics/synthea-omop-template) | Only if no entry in `synthetic_data/registry.yaml` fits — check first with `Rscript synthetic_data/scripts/lookup_dataset.R --disease "<term>"` |
 
-**Analysis core — pick one:**
+For why a study is split this way, see the README's
+[What a study looks like](../README.md#what-a-study-looks-like).
 
-| Template | Use when |
-|---|---|
-| [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) **(default for new studies)** | Cohort logic can be expressed as declarative circe cohort definitions run by OHDSI Strategus. Has its own `CHECKLIST.md` and `docs/UsingThisTemplate.md` — follow those instead of Steps 10.1–11 below once your repo is created. |
-| `synthea-omop-template` (this guide covers it in full below) | You need the numbered `workflow/01–09` scaffold in the same repo as the analysis (Synthea generation + ETL + QC alongside the analysis code), or you're building a `-synth` data-generation-only repo. |
+### 10.1 Create each repo on GitHub
 
-If in doubt, use `strategus-study-template` and read its README's "Lineage"
-and "Quick start" sections — Steps 10.1–11 below are written for the
-`synthea-omop-template` path.
-
-**Report repo — always create one, regardless of which analysis-core
-template you chose:** [`omop-report-template`](https://github.com/Duke-Vascular-Informatics/omop-report-template).
-See Step 10.5 below.
-
-### 10.1 Create the analysis-core repo on GitHub
-
-1. Go to the study template: [github.com/Duke-Vascular-Informatics/synthea-omop-template](https://github.com/Duke-Vascular-Informatics/synthea-omop-template)
-   (or [strategus-study-template](https://github.com/Duke-Vascular-Informatics/strategus-study-template) — see Step 10.0)
-2. Click **Use this template** → **Create a new repository**
-3. Name it descriptively (e.g., `colectomy-ssi-omop`)
-4. Set visibility to **Private**
-5. Click **Create repository from template**
+For each repo above: open its template on GitHub → **Use this template** →
+**Create a new repository**; name it per the table; set visibility to
+**Private**.
 
 ### 10.2 Clone inside the workspace
 
-In the **VS Code container terminal**:
+In the **container terminal**, from `/workspace`. Clone as **siblings**, never
+nested in each other:
 
 ```bash
-git clone https://github.com/<your-org>/<your-study>.git
-cd <your-study>
+cd /workspace
+git clone https://github.com/<your-org>/<study>.git
+git clone https://github.com/<your-org>/<study>-report.git
 ```
 
-### 10.3 Create your personal working branch
+Add each folder name to the workspace `.gitignore` (they are separate repos)
+and register them in `studies.yaml`.
 
-Every collaborator works on a branch named after their GitHub username. This keeps
-your changes separate from `main` until they are ready to review and merge.
+### 10.3 Create your personal working branch (in every repo)
+
+Everyone works on a branch named after their GitHub username:
 
 ```bash
-# Your working branch = your GitHub username (auto-detected)
+cd /workspace/<study>
 BRANCH=$(gh api user --jq .login)
-echo "Your working branch will be: $BRANCH"
-
 git checkout -b "$BRANCH"
 git push -u origin "$BRANCH"
 ```
 
-> **Why use your GitHub username as the branch name?** It makes it immediately clear
-> whose work is on which branch, and the AI coding assistant can detect it automatically
-> with `gh api user --jq .login` — no hardcoded names needed in any instructions.
+Repeat in `<study>-report` (and the workspace repo itself if you will edit it).
+All commits go to your branch and reach `main` only through a pull request
+(squash merge). **Never push to `main`, and never push to another person's
+branch** — if you see a branch named after someone else, leave it alone.
 
-All future commits, pushes, and pull requests go to **this branch — your branch**.
-Never push directly to `main`, and **never push to another collaborator's branch**
-(e.g., if you see a branch named `jsmith` or another username, that belongs to
-someone else — do not check it out, commit to it, or push to it).
+### 10.4 Keep your branch current
 
-### 10.4 Keep your branch current (do this regularly)
-
-The workspace owner merges infrastructure fixes, Dockerfile updates, and shared
-phenotype definitions into `main` frequently. **Pull updates at the start of every
-work session** to avoid building on stale code or a broken container image:
+Infrastructure fixes land in `main` often. At the start of each session, in
+every repo you work in:
 
 ```bash
 BRANCH=$(gh api user --jq .login)
-
-# In the workspace root:
-cd /workspace
-git checkout main && git pull origin main
-git checkout "$BRANCH" && git rebase main
-git push origin "$BRANCH"
-
-# In your study repo:
-cd /workspace/<your-study>
 git checkout main && git pull origin main
 git checkout "$BRANCH" && git rebase main
 git push origin "$BRANCH"
 ```
 
-> **Why this matters:** the dev container's Dockerfile, R package list, and shared
-> scripts all live in the workspace repo. If you skip pulling updates, you may hit
-> build errors or connection issues that have already been fixed on `main`.
+After **your own PR is squash-merged**, do **not** rebase — the squash rewrote
+your commits, so rebasing produces spurious conflicts. Instead follow
+"After a PR is merged into main" in [`CLAUDE.md`](../CLAUDE.md).
 
-Your study repo sits directly inside the workspace:
+### 10.5 Set up the analysis-core and report repos
 
-```
-<workspace-root>/
-  .env
-  docker-compose.yml
-  omop_vocab/
-  <your-study>/          ← your study lives here
-    config.R
-    study_params.yaml
-    cohorts/
-    workflow/
-```
+Now follow each template's own instructions — they are the source of truth for
+that repo:
 
-### 10.5 Create your report repo
+- **`<study>`:** read `README.md`, then `docs/STRATEGUS_CONVENTIONS.md` (ten
+  minutes; every item is a bug that cost a real study weeks), then work through
+  `CHECKLIST.md` Path A.
+- **`<study>-report`:** `CHECKLIST.md` Path A, once `<study>/output/` exists.
+  **The report repo never connects to a database.** If you want to add a query
+  there, put it in `<study>/R/extract_report_inputs.R` instead.
 
-Do this now, alongside the analysis-core repo, rather than after Step 11 —
-the extract step you'll wire up in Step 11 writes exactly the artifacts this
-repo reads.
-
-1. Go to [github.com/Duke-Vascular-Informatics/omop-report-template](https://github.com/Duke-Vascular-Informatics/omop-report-template)
-2. Click **Use this template** → **Create a new repository**
-3. Name it `<your-study>-report` — the `-report` suffix on your analysis-core
-   repo's name
-4. Set visibility to **Private**
-5. Click **Create repository from template**, then clone it as a **sibling**
-   of your analysis-core repo (not nested inside it):
-
-   ```bash
-   cd /workspace
-   git clone https://github.com/<your-org>/<your-study>-report.git
-   cd <your-study>-report
-   BRANCH=$(gh api user --jq .login)
-   git checkout -b "$BRANCH"
-   git push -u origin "$BRANCH"
-   ```
-
-6. Work through its `CHECKLIST.md` (Path A — new report repo) once your
-   analysis-core repo has an `output/` folder to point it at (Step 11 below)
-
-Your workspace now has both repos side by side:
+Before writing any cohort or concept set, read
+[`phenotype_library/README.md`](../phenotype_library/README.md): you must check
+the OHDSI Phenotype Library, your lab's ATLAS definitions, and the local
+catalog before running a live vocabulary query ([Rule 1](../README.md#rules-you-must-follow)).
 
 ```
-<workspace-root>/
-  <your-study>/            ← analysis-core repo
-    output/                ← <your-study>-report reads this
-  <your-study>-report/     ← report repo (sibling, not nested)
+/workspace/
+├── <study>/            ← analysis-core; output/ is read by the report repo
+└── <study>-report/     ← report repo (sibling)
 ```
-
-**This repo renders from result artifacts only — no database connection,
-ever.** If you find yourself wanting to add `DatabaseConnector` or
-`connection_details` inside `<your-study>-report`, that query belongs in
-`<your-study>`'s `R/extract_report_inputs.R` instead. See
-`omop-report-template`'s README and the "Multi-Repo Analysis Pipeline" section of the
-top-level `README.md` for why.
 
 ---
 
 ## Step 11: Run the Study Workflow (2–3 hours total)
 
-The `workflow/` folder inside your study repo contains nine numbered scripts that
-run in order. Some require you to edit files first; others run without any changes.
+> **Which repo is this for?** Step 11 applies only to a **`-synth` repo**
+> (`synthea-omop-template`), whose sole purpose is to generate an
+> analysis-specific synthetic dataset (Workflows 01–06). It contains no
+> analysis: the analysis runs in your Strategus analysis-core repo, following
+> its `CHECKLIST.md`, and the manuscript in your report repo. A `-synth`
+> repo's job ends when the dataset is built, quality-checked and registered.
 
-All commands below run in the **VS Code container terminal**. Make sure you are
-in your study folder first:
+All commands run in the **container terminal** from the repo's folder:
 
 ```bash
-cd /workspace/<your-study>
+cd /workspace/<study>-synth
 ```
-
----
 
 ### Workflow 01 — Environment setup
 
-Run once when you first open the study repo. Installs any missing R packages,
-checks the database connection, and provisions the JDBC driver.
+Run once per repo. Restores packages, provisions the JDBC driver, and opens a
+test connection.
 
 ```bash
 Rscript workflow/01_setup_synthea_etl_qc_env.R
 ```
 
----
-
 ### Workflow 02 — Define your study ✏️ *Edit before running*
 
-This is the main step where you describe your study — what population you are
-studying, what outcome you are looking for, and what covariates to include.
+Declare the cohorts and covariates your generated data must support, so the QC step can confirm the synthetic patients exist. Fill these in only as far as validation needs; the real study definitions live in your Strategus repo. Before running, edit:
 
-**Before running, edit these files in VS Code:**
+- **`study_params.yaml`** — `study_name`, `cdm_schema`, `results_schema`,
+  `cohort_table`, `output_folder`, and the generation parameters (population,
+  age range, seed).
+- **`cohorts/*.sql`** — replace every `concept_id = 0` placeholder with a real
+  concept ID, found via the Rule 1 lookup tiers. Every ID needs a trailing comment
+  naming the concept and its `[vocab query]` label.
+- **`covariates/covariates.csv` and `covariate_concepts.csv`** — the patient
+  features.
 
-**`study_params.yaml`** — open it in VS Code's file explorer and fill in:
-- `study_name`, `cdm_schema`, `results_schema`, `cohort_table`, `output_folder`
-- The `study_design` (e.g. `cohort_characterization`, `prognostic_model`)
-- Enable the analyses you want by setting their flags to `true`
-
-**`cohorts/`** — open the SQL files and replace every `concept_id = 0`
-placeholder with the correct OMOP concept IDs for your clinical definition.
-Ask your AI coding assistant to look these up — it will run vocabulary
-queries and document each ID.
-
-**`covariates/covariates.csv` and `covariate_concepts.csv`** — add the
-patient features your study needs.
-
-Once edited, run the validation script:
+Then validate:
 
 ```bash
 Rscript workflow/02_define_omop_cohort_outcome_covariates.R
 ```
 
-This checks all your files for placeholder values and prints `[OK]` / `[WARN]` /
-`[FAIL]` for each item. Fix any `[FAIL]` items before continuing.
-
----
+It prints `[OK]` / `[WARN]` / `[FAIL]` per item; fix every `[FAIL]` first.
 
 ### Workflow 03 — Validate Synthea module
 
-Checks that the synthetic disease module used to generate test data is valid.
-No editing needed.
+Checks the Synthea disease module (the JSON state machine that decides what
+synthetic patients get). No edits.
 
 ```bash
 Rscript workflow/03_generate_synthea_module_artifacts.R
 ```
 
----
-
 ### Workflow 04 — Generate synthetic patients
 
-Creates synthetic patient data for testing your analysis on the local database.
-No editing needed.
+Runs Synthea (a Java program) to produce synthetic patient CSVs. No edits.
 
 ```bash
 bash workflow/04_generate_synthea_csv.sh
 ```
 
-> **Windows:** use `powershell -ExecutionPolicy Bypass -File workflow/04_generate_synthea_csv.ps1` instead.
+> Windows: `powershell -ExecutionPolicy Bypass -File workflow/04_generate_synthea_csv.ps1`.
+> Do not run `.sh`/`.ps1` files with `Rscript`.
 
----
+### Workflow 05 — Load into OMOP CDM
 
-### Workflow 05 — Load synthetic data into the database
-
-Converts the synthetic CSV data into OMOP CDM tables in SQL Server.
-No editing needed.
+Converts the CSVs to OMOP CDM v5.4 tables in SQL Server, linking to the shared
+`omop_vocab` schema rather than reloading it. No edits. On failure see
+[TROUBLESHOOTING_ETL.md](TROUBLESHOOTING_ETL.md).
 
 ```bash
 Rscript workflow/05_etl_csv_to_omop.R
 ```
 
-If this fails, see [TROUBLESHOOTING_ETL.md](TROUBLESHOOTING_ETL.md).
-
----
-
 ### Workflow 06 — Quality check
 
-Runs data quality checks on the newly loaded data and validates that your
-phenotype definitions find patients. No editing needed.
+Runs data-quality checks and confirms your phenotype definitions find patients.
 
 ```bash
 Rscript workflow/06_quality_check_defined_phenotypes.R
 ```
 
----
-
-### Workflow 07 — Analysis environment setup ✏️ *Optional edit*
-
-Checks that all R packages your analysis needs are installed. The default
-configuration covers most studies. Only edit this file if your analysis
-requires packages not already included.
-
-```bash
-Rscript workflow/07_setup_analysis_env.R
-```
-
----
-
-### Workflow 08 — Run analysis and generate report ✏️ *Optional edit*
-
-Runs the analysis and produces your output files and manuscript report.
-For most studies, **no code editing is needed** — the analysis type is
-controlled entirely by the `analyses:` flags you set in `study_params.yaml`
-in Workflow 02.
-
-> **Important:** run this in a fresh terminal session. Close any existing
-> R sessions before running.
-
-```bash
-Rscript workflow/08_run_analysis_and_manuscript_report.R
-```
-
-Outputs are written to `output/<study_name>/`.
+This is the last step of a `-synth` repo. Register the dataset in
+`synthetic_data/registry.yaml` so your analysis-core repo (and other studies)
+can use it — see [`synthetic_data/README.md`](../synthetic_data/README.md) for how
+an analysis-core repo points at a registered dataset.
 
 ---
 
 ## Troubleshooting
 
-- Infrastructure and container setup: [SETUP.md](SETUP.md)
-- Vocabulary loading failures: [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md)
-- Synthetic data and ETL failures: [TROUBLESHOOTING_ETL.md](TROUBLESHOOTING_ETL.md)
+- Infrastructure and container: [SETUP.md](SETUP.md)
+- Vocabulary load: [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md)
+- Synthetic data and ETL: [TROUBLESHOOTING_ETL.md](TROUBLESHOOTING_ETL.md)
 
 ### Docker using too much disk space
 
-Docker Desktop's virtual disk grows with every build attempt (including failed
-ones) and does not shrink automatically. If Docker is using 100+ GB, run:
+Docker's virtual disk grows with every build, including failed ones, and never
+shrinks on its own. Clear build cache and unused images — **without** touching
+volumes:
 
 ```bash
-docker system prune -a --volumes
+docker image prune -a
 docker builder prune -a
 ```
 
-Then set the virtual disk limit to **60 GB** in Docker Desktop → Settings →
-Resources → Advanced (see [Step 3.1](#31-configure-disk-and-memory-limits)).
+Then set the virtual disk limit as in
+[Step 3.1](#31-configure-disk-and-memory-limits). Do **not** use `--volumes`
+unless you intend to wipe the database and reload the vocabulary.
 
 ### "Connection refused" on `localhost:1433`
 
-If an R script fails with an error like:
+Typical error:
 
 ```
-Error in rJava::.jcall(...) :
-  com.microsoft.sqlserver.jdbc.SQLServerException: The TCP/IP connection to
-  the host localhost, port 1433 has failed. Connection refused.
+com.microsoft.sqlserver.jdbc.SQLServerException: The TCP/IP connection to
+the host localhost, port 1433 has failed. Connection refused.
 ```
 
-This means the script tried to connect to `localhost` instead of the shared
-SQL Server container (`mssql_dev`). Inside the dev container, `localhost`
-refers to the container itself — not the database.
+Inside the container, `localhost` is the container itself, not the database.
+The database is the `mssql_dev` host; `MSSQL_HOST=mssql_dev` is injected by
+`.devcontainer/docker-compose.yml`, and only changes after a **rebuild**, not a
+reopen.
 
-**Cause:** your dev container was built before `.devcontainer/docker-compose.yml`
-was updated to set `MSSQL_HOST=mssql_dev` automatically. Environment variable
-changes in `docker-compose.yml` only take effect after a container **rebuild**
-— reopening the folder is not enough.
+> **Do not set `MSSQL_HOST` in `.env`.** Adding `MSSQL_HOST=localhost` there
+> would override the container value and break every in-container script. (On
+> the host, `config.R` defaults to `localhost` automatically.)
 
-> **`MSSQL_HOST` is not set in `.env`** (by design). Inside the dev container,
-> `docker-compose.yml` sets it to `mssql_dev` (via `DEVCONTAINER_MSSQL_HOST`); on
-> the host, `config.R` defaults to `localhost`. Do **not** add `MSSQL_HOST=localhost`
-> to `.env` — that would override the container value and force every in-container
-> script to connect to `localhost:1433` (connection refused). The fix below
-> (rebuild) makes the docker-compose value take effect.
+Fix:
 
-**Fix:**
+1. Update to the latest `main` (`git checkout main && git pull origin main`),
+   then rebase your branch.
+2. **Dev Containers: Rebuild Container**.
+3. Re-run the Step 7 checks (`echo $MSSQL_HOST` → `mssql_dev`).
 
-1. Pull the latest changes to the workspace `main` branch:
-   ```bash
-   git checkout main && git pull origin main
-   ```
-   (then rebase your working branch onto `main` — see the "Version Control"
-   section in the workspace `CLAUDE.md`)
-2. Rebuild the dev container: `Cmd+Shift+P` / `Ctrl+Shift+P` →
-   **"Dev Containers: Rebuild Container"**
-3. After the rebuild, re-run the Step 7 checks:
-   ```bash
-   echo $MSSQL_HOST     # Should print: mssql_dev
-   docker ps            # Should show mssql_dev as healthy
-   ```
-
-If `mssql_dev` does not appear in `docker ps` after rebuilding, the SQL Server
-service itself isn't running — start it from a **host** terminal (not the
-container terminal) at the workspace root:
+If `mssql_dev` is not running, start it from a **host** terminal at the
+workspace root:
 
 ```bash
 docker compose up -d
@@ -886,37 +734,36 @@ docker compose up -d
 | File | Purpose |
 |---|---|
 | `docker-compose.yml` | SQL Server container |
-| `.env` | Your secrets (never commit) |
+| `.env` | Your secrets — never commit |
 | `.env.example` | Reference template for `.env` |
-| `omop_vocab/` | OMOP vocabulary CSVs (never commit) |
-| `renv.lock` | R package list — restored on container build |
+| `omop_vocab/` | Vocabulary CSVs — never commit |
+| `renv.lock` | Shared R package lockfile, restored on build |
 | `infrastructure/scripts/` | Vocabulary loader and workspace scripts |
+| `phenotype_library/catalog.yaml` | Verified concept sets |
+| `studies.yaml` | Registry of your study repos |
 
-**Analysis-core repo (`<your-study>/`, `synthea-omop-template` layout)**
-
-| File | Purpose |
-|---|---|
-| `study_params.yaml` | Your study settings — edit this |
-| `cohorts/*.sql` | Cohort definitions — edit these |
-| `covariates/*.csv` | Covariate definitions — edit these |
-| `workflow/01–08` | Analysis pipeline — do not edit |
-| `output/` | Analysis results (gitignored) — read by `<your-study>-report` |
-
-**Report repo (`<your-study>-report/`, from `omop-report-template`)**
+**Analysis-core repo (`strategus-study-template` layout)**
 
 | File | Purpose |
 |---|---|
-| `GenerateReport.R` | Entry point — `Rscript GenerateReport.R` |
-| `config.R` | Reads `report_inputs/_report_config.yaml` — no `study_params.yaml` here |
+| `inst/cohorts/*.json` | circe cohort definitions |
+| `CreateStrategusAnalysisSpecification.R` | Builds the analysis spec |
+| `StrategusCodeToRun.R` | Runs it against the CDM |
+| `output/` | Results (gitignored); read by the report repo |
+
+**Report repo (`omop-report-template` layout)**
+
+| File | Purpose |
+|---|---|
+| `GenerateReport.R` | Entry point: `Rscript GenerateReport.R` |
 | `R/report_dispatch.R`, `R/report_helpers.R` | Your report composition — edit these |
-| `export_data/` | Secure-environment export drop-zone (gitignored except its README) |
-| `reports/` | Rendered `.docx` output (gitignored) |
+| `export_data/` | Drop-zone for exports from a secure environment (gitignored) |
+| `reports/` | Rendered `.docx` (gitignored) |
 
 ---
 
 ## Version Info
 
-- **R version:** 4.5.x
-- **Java:** 17 (Eclipse Adoptium)
+- **R / Java / Python:** whatever you set in `.env` per Step 6.0 to match your secure analytics environment (defaults: R 4.5.2, Java 17, Python 3.12 at `/opt/mlenv`)
 - **SQL Server:** Azure SQL Edge (ARM64) or SQL Server 2022 (AMD64)
 - **OMOP CDM:** v5.4

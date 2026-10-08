@@ -117,6 +117,6 @@ library(flextable)  # formatted tables in Word output
 ## Version Alignment
 
 - Do not suggest upgrading pinned package refs without validating compatibility first.
-- R version: **4.5.x** — avoid packages that require R >= 4.6.
-- **Java 17** (Eclipse Adoptium `jdk-17`) is required for `DatabaseConnector` / `rJava`. `JAVA_HOME` must point to JDK 17 before loading any package that calls rJava. This is configured automatically in the devcontainer; on a host machine set `JAVA_HOME` in `.env` or system environment.
+- R, Java and Python versions are set in `.env` (`R_VERSION`, `JAVA_VERSION`, `PYTHON_VERSION`) to match the secure analytics environment (defaults: R 4.5.2, Java 17, Python 3.12). Check `R --version` and `renv.lock` before suggesting a package, and avoid packages that require a newer R than the container's.
+- A **JDK matching `JAVA_VERSION`** is required for `DatabaseConnector` / `rJava`. `JAVA_HOME` must point to it before loading any package that calls rJava. This is configured automatically in the devcontainer; on a host machine set `JAVA_HOME` in `.env` or system environment.
 - Check `renv.lock` for the current pinned versions before suggesting an install.

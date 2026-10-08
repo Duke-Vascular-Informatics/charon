@@ -2,6 +2,8 @@
 
 Workspace-level documentation for shared setup, onboarding, and operations.
 
+**Reading order for a new person:** root [README](../README.md) → `GETTING_STARTED.md` → `ANALYST_PLAYBOOK.md`; keep `COMMANDS.md` open as a cheat sheet.
+
 ## Scope
 
 - Owns: shared onboarding, setup, auth, troubleshooting, and operator references.
@@ -13,16 +15,15 @@ Workspace-level documentation for shared setup, onboarding, and operations.
 
 | File | Description |
 |------|-------------|
-| `GETTING_STARTED.md` | **Start here for new users.** Complete end-to-end workflow from VS Code setup through analysis. Includes post-clone workflow with skip gates for repeat users. |
+| `GETTING_STARTED.md` | **Start here after the root [README](../README.md).** Ordered setup from GitHub account to a loaded vocabulary and your first study repos. Assumes OMOP/OHDSI, R/Python and basic Java knowledge, but nothing about charon. |
 | `COMMANDS.md` | **Canonical command index.** Single source of truth for executable command snippets used across docs. |
-| `ANALYST_PLAYBOOK.md` | **Quick triage guide.** Decision-tree style routing for analysts: first-run vs repeat-study, concept lookup, setup checks, hook install, and support bundle escalation. |
+| `ANALYST_PLAYBOOK.md` | **Day-to-day guide.** The typical session loop, concept lookup tiers, synthetic-data reuse, a symptom-to-layer troubleshooting table, and how to work with the AI assistant. |
 | `MAINTAINER_PLAYBOOK.md` | **Maintainer runbook.** Governance checks, strict release docs freeze commands, and canonical source ownership rules. |
 | `GIT_GITHUB_AUTH.md` | **Git auth deep dive.** SSH and HTTPS/token-backed GitHub authentication setup details used by Step 2. |
 | `SETUP.md` | **Infrastructure reference.** Deep dive into prerequisites, Docker setup, required `omop-dev-workspace/` folder layout, relative paths, Athena vocabulary download and CPT-4 rebuild, loading vocabulary into SQL Server, and troubleshooting. Use this if you hit issues during automated setup. |
 | `TROUBLESHOOTING_VOCAB_LOAD.md` | **Vocabulary troubleshooting.** Focused checks and retry flow for Step 10 OMOP vocabulary loading failures. |
 | `TROUBLESHOOTING_ETL.md` | **ETL troubleshooting.** Focused run-order and failure-pattern checks for the Step 11 (Workflow 03-06) synthetic generation and ETL issues. |
 | `TOPIC_OWNERSHIP.csv` | **Topic ownership matrix.** Maps sensitive topic headings to canonical owner docs to reduce content cloning. |
-| `REPORT_GENERATION.md` | Detailed guide to the automated Word report generation pipeline: what each table and figure contains, how to re-run report generation independently of the full workflow, and how to interpret the output metrics. |
 | `workflow_steps.yaml` | **Machine-readable step map.** Canonical step labels/anchors used by docs validation guardrails. |
 | `CHANGELOG.md` | **Governance changelog.** Categorized record of workflow/command/validator/process documentation changes. |
 
