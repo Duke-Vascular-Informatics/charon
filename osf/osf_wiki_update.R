@@ -3,14 +3,17 @@
 #
 # Purpose:
 #   Renders a home-wiki markdown page for every study with an OSF project in
-#   osf/osf_projects.csv, describing the study as declared in its
-#   study_params.yaml and the analysis pipeline executed by
-#   workflow/08_run_analysis_and_manuscript_report.R, then pushes it to OSF.
+#   osf/osf_projects.csv, then pushes it to OSF. The page body comes from the
+#   study's docs/PROTOCOL.md (Background, Objectives, Regulatory sections) when
+#   it has one; otherwise from the design parameters in its study_params.yaml.
+#   Analysis itself is specified in the study's analysis-core repository
+#   (Strategus), so no analysis steps are listed here.
 #
 # Inputs:
 #   osf/osf_projects.csv          — study → OSF GUID (created by osf_sync.R)
 #   studies.yaml                  — registry descriptions (fallback text)
-#   <study>/study_params.yaml     — study identity, cohorts, windows, analyses
+#   <study>/docs/PROTOCOL.md      — preferred source for the page body
+#   <study>/study_params.yaml     — fallback: study identity, cohorts, windows
 #   OSF_PAT                       — token, .env file checked before env var
 #
 # Outputs / side effects:
@@ -100,34 +103,6 @@ api  <- "https://api.osf.io/v2"
 # ============================================================
 # Section 3 — Wiki content rendering
 # ============================================================
-# Human-readable labels for the analyses: flags in study_params.yaml, matching
-# the analysis blocks in workflow/08 Section 7. Order mirrors workflow/08.
-analysis_labels <- c(
-  cohort_characterization =
-    "**Cohort characterization** — FeatureExtraction default covariate summary of the target cohort (`FeatureExtraction::getDbCovariateData`)",
-  prognostic_model =
-    "**Prognostic model development** — PatientLevelPrediction pipeline (LASSO logistic regression default)",
-  causal_inference =
-    "**Causal inference** — CohortMethod propensity-score matching with a Cox outcome model (target vs. comparator cohort)",
-  integer_risk_score =
-    "**Integer risk score validation** — applies the published integer point score from `covariates/covariates.csv` (points column) with optional score-to-probability lookup (`covariates/risk_lookup.csv`)",
-  plp_model_validation =
-    "**PLP model external validation** — applies the pre-built model from `model/` to the local cohort; writes person-level scores, covariate summary, and discrimination/calibration metrics",
-  word_report =
-    "**Manuscript report** — Word report assembled from the pipeline outputs (`R/report_extended.R`)"
-)
-
-# The fixed scaffolding every study executes in workflow/08 before Section 7;
-# stated once so readers see the full execution context, not just the
-# study-specific analysis blocks.
-pipeline_preamble <- paste(
-  "1. Workflow bootstrap, renv activation, and configuration load (`study_params.yaml` -> `config.R`)",
-  "2. Java/JDBC session guard and package load (DatabaseConnector + HADES stack)",
-  "3. Database connection to the OMOP CDM (SQL Server)",
-  "4. Verification of every study concept ID against the live `omop_vocab` vocabulary",
-  "5. Results-schema preparation and cohort instantiation from the SQL definitions in `cohorts/`",
-  sep = "\n")
-
 # Renders an "## Investigators" section from the workspace-root
 # contributors.yaml (the same source scripts/sync_contributors.R reads to
 # generate each repo's own CONTRIBUTORS.md / CITATION.cff), filtered to
@@ -171,10 +146,9 @@ render_investigators <- function(study_dir) {
 
 # For a study whose protocol is authored directly as docs/PROTOCOL.md
 # (Strategus-based studies -- study_params.yaml there doesn't carry the
-# legacy cohorts/sql_file/analyses: shape this script's generic cohort/
-# pipeline rendering below expects, so forcing that rendering onto them
-# produces confidently wrong text, e.g. "no analysis blocks enabled" for a
-# study whose analysis already ran to completion). Extracts the protocol's
+# cohorts/sql_file shape this script's generic cohort rendering below
+# expects, so forcing that rendering onto them produces confidently wrong
+# text). Extracts the protocol's
 # own "1. Background and Rationale" and "2. Objectives" sections verbatim
 # (the one heading pair confirmed consistent across every current
 # docs/PROTOCOL.md) as the page body, rather than re-deriving a summary
@@ -337,16 +311,6 @@ render_wiki <- function(study_dir) {
     outcome_line,
     cohort_block("Comparator cohort", p$comparator)))
 
-  # --- Enabled analyses (drives workflow/08 Section 7) ---------------------
-  enabled <- names(Filter(isTRUE, p$analyses))
-  enabled <- enabled[enabled %in% names(analysis_labels)]  # keep workflow order
-  enabled <- names(analysis_labels)[names(analysis_labels) %in% enabled]
-  analysis_lines <- if (length(enabled) > 0) {
-    paste0(seq_along(enabled) + 5, ". ", analysis_labels[enabled], collapse = "\n")
-  } else {
-    "_No analysis blocks are enabled yet in `study_params.yaml`._"
-  }
-
   paste0(
     header,
     "\n## Study design\n\n",
@@ -356,13 +320,12 @@ render_wiki <- function(study_dir) {
              paste(model_rows, collapse = "\n"), "\n"),
     "\n## Cohorts\n\n",
     paste0("- ", unlist(cohort_lines), collapse = "\n"), "\n",
-    "\n## Analysis pipeline (workflow/08)\n\n",
-    "All analyses run on an OMOP CDM v5.4 database via the OHDSI HADES ",
-    "toolstack, driven entirely by `study_params.yaml`:\n\n",
-    pipeline_preamble, "\n", analysis_lines, "\n",
+    "\n## Analysis\n\n",
+    "Analyses run on an OMOP CDM v5.4 database via the OHDSI HADES toolstack. ",
+    "The analysis specification and code are in the analysis repository linked ",
+    "above; the attached protocol documents are the authoritative description.\n",
     investigators_md,
-    "\n---\n_Generated from `study_params.yaml` and ",
-    "`workflow/08_run_analysis_and_manuscript_report.R` on ",
+    "\n---\n_Generated from `study_params.yaml` on ",
     format(Sys.Date()), "._\n")
 }
 
