@@ -6,137 +6,90 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23189333.svg)](https://doi.org/10.5281/zenodo.23189333)
 
-charon is a **workspace template** for running observational studies on an
-OMOP CDM v5.4 database with the OHDSI HADES R packages. It gives you, ready
-to use:
+## Is charon for me?
 
-- a **dev container** (R, Java and Python — versions you set to match your
-  secure analytics environment) plus a **SQL Server** database in Docker, so
-  every collaborator has an identical environment;
-- a **shared phenotype library** — a catalog of concept sets that have already
-  been verified against the vocabulary, so nobody re-derives them;
-- a **registry of reusable synthetic datasets**, so a new study can develop
-  against realistic fake patients without generating its own;
-- **study templates** for generating analysis-specific synthetic data, building ETLs from existing non-OMOP data, running Strategus-based analyses, and generating reports from the aggregate outputs of those analyses;
-- **AI-assistant rules** (`CLAUDE.md`, Copilot instructions) that enforce
-  the lab's OHDSI conventions when an assistant writes code for you.
+Use charon if you:
 
-Fork the repo, or click **Use this template**, to stand up your own lab's
-workspace.
+- analyze OMOP data with HADES;
+- want investigators to develop safely against synthetic data;
+- need identical analytic environments across collaborators;
+- deploy analyses into restricted or air-gapped environments; or
+- want patient-level data to stay at each institution while sharing analysis
+  code and aggregate results.
 
-> **Who this README is for.** It assumes you know the basics of OMOP and
-> OHDSI (CDM tables, concept IDs, Athena, ATLAS, HADES), you can read R and
-> Python, and you know roughly what Java is for (HADES uses it through JDBC).
-> Every charon-specific
-> term is defined the first time it appears, and again in the
-> [glossary](#glossary).
+charon is **not** a replacement for ATLAS, Strategus, HADES, or an OMOP ETL.
+It provides the reproducible research workspace around them.
+
+**What you get:** a pinned dev container (R, Java, Python and a SQL Server
+database), a shared phenotype library of verified concept sets, a registry of
+reusable synthetic datasets, templates for each kind of repo a study needs
+(synthetic data, ETL, Strategus analysis, report), and AI-assistant rules that
+enforce OHDSI conventions. Fork the repo or click **Use this template** to
+stand up your lab's workspace.
+
+> **Who this README is for:** readers who know OMOP/OHDSI basics, can read R
+> and Python, and know roughly what Java is for here (JDBC), but nothing about
+> this project. Project terms are in the [glossary](#glossary).
 
 **Contents:**
-[What problem this solves](#what-problem-this-solves) (aggregate-first vs. federated, hypothesis-driven design) ·
+[Why this approach](#what-problem-this-solves) ·
 [The big picture](#the-big-picture) ·
 [Glossary](#glossary) ·
 [What a study looks like](#what-a-study-looks-like) ·
 [What is in this repo](#what-is-in-this-repo) ·
-[Rules you must follow](#rules-you-must-follow) ·
+[Rules](#rules-you-must-follow) ·
 [Prerequisites](#prerequisites) ·
 [Where to go next](#where-to-go-next) ·
-[Using charon for your own lab](#using-charon-for-your-own-lab)
+[Use it for your lab](#using-charon-for-your-own-lab)
 
 ---
 
 ## What problem this solves
 
-### The usual approach: aggregate first, analyze second
+**The usual approach is aggregate first, analyze second:** pool patient-level
+data from every site, then analyze. It is getting harder to sustain:
 
-Many people assume that observational health research has to work like this:
-collect patient-level data from every participating institution into one
-place, *then* analyze it. That approach is getting harder to sustain, because
-of the volume and complexity of what today's EHRs capture:
+- **Data use agreements** take months to negotiate and repeat for every new
+  study, partner or data element.
+- **Stripped-down data.** De-identification and abstraction remove exact
+  dates, detailed medication and lab histories, and linkage across encounters,
+  and with them much of the EHR's analytic richness.
+- **Bottlenecks.** Even within one institution, analyses queue behind a single
+  abstraction and analysis team that builds a bespoke extract per question.
 
-- **Data use agreements.** Moving patient-level data between institutions
-  triggers privacy, security and legal review at each one. Negotiating
-  data use agreements (DUAs) can take months, and the work repeats for every
-  new study, partner or data element.
-- **Stripped-down data.** To make sharing tolerable, data is de-identified or
-  abstracted down to a limited extract. Exact dates, free-text-derived
-  features, detailed medication and lab histories, and linkage across
-  encounters are often the first things lost, taking much of the analytic
-  richness of the EHR with them.
-- **Bottlenecks.** Even within one institution, analyses typically queue
-  behind a single data abstraction and analysis team that extracts a bespoke
-  dataset for each question.
+**charon supports federated analysis instead: the code travels and the data
+stays put.** Each site keeps its OMOP data in its own secure environment; the
+analysis is written once, shared, and run where the data lives; only aggregate
+results come back. Patient-level data is never reduced before analysis.
 
-### The alternative: the code travels, the data stays put
+**It also helps inside one institution.** Once EHR data is in OMOP, any trained
+person there can draft and test an analysis against synthetic data, then run
+the reviewed code in the secure environment, with no central abstraction team
+needed for every study.
 
-charon supports **federated analysis**. Each institution keeps its data in
-its own secure environment, converted to the OMOP common data model. The
-analysis code is written once, shared, and executed *where the data lives*;
-only **aggregate results** come back. This minimizes the administrative
-burden of a study and still lets the analysis use the full richness of the
-patient-level data in the EHR, because that data is never reduced before
-analysis.
+**It makes the analysis hypothesis-driven.** Because the code is written on
+synthetic data, the team builds the cohorts, chooses the analytic strategy and
+produces publication-ready tables and figures *before* seeing a real result.
+The reviewed code is committed to git and run once; with nothing to peek at,
+there is little room for p-hacking, and any later change is a visible,
+reviewable deviation. Synthetic data shows the pipeline works, not what the
+real effect is: report real-run findings as pre-specified or clearly labelled
+post-hoc.
 
-### It also opens up OMOP data inside a single institution
+**What charon has to solve** to make that work:
 
-You do not need a multi-site network to benefit. Once an institution's EHR
-data is in OMOP, **any trained individual there can draft and test an
-analysis themselves** — against synthetic data in the dev container — and then
-run the finished, reviewed code in the secure environment. That removes the
-dependency on one data abstraction and analysis team for every study, while
-the standardized vocabulary and shared definitions keep the results
-comparable and reviewable.
-
-### It makes the analysis hypothesis-driven
-
-Because the code is written against synthetic data, **the analysis is
-designed before anyone sees a real result**. The team can:
-
-- build the cohorts and check that they behave sensibly;
-- choose the analytic strategy (covariates, comparison method, outcome
-  models, sensitivity analyses);
-- build the publication-ready tables and figures, end to end.
-
-Aside from data-quality checks, nothing about the real data informs these
-choices. The finished code is committed and reviewed in git, then run once in
-the secure environment. This follows the scientific method more honestly than
-exploring the real data until something looks interesting: with no results to
-peek at, there is little opportunity for the forking-paths and repeated
-re-analysis that produce "p-hacking". The git history shows exactly what was
-specified before the real run, and any change afterwards is a visible,
-reviewable deviation rather than a silent one. (Study protocols can also be
-hosted privately on OSF; see `osf/`.)
-
-Synthetic data does not tell you what the real effect is, only that the
-pipeline works and the plan is sound. The real run is still where data
-quality is assessed, and findings from it should be reported as pre-specified
-or as clearly labelled post-hoc deviations.
-
-### What charon has to solve
-
-Running code you cannot watch, against data you cannot see, creates four
-practical problems, and charon is built around them:
-
-1. **You need somewhere safe to write the code.** You cannot develop against
-   real patients on a laptop. charon runs everything against *synthetic*
-   OMOP data (generated with [Synthea](https://github.com/synthetichealth/synthea))
-   inside a local container, so the shared GitHub repos never contain PHI.
-2. **The code has to run somewhere you cannot see.** The secure environment
-   at each site is often air-gapped. charon pins every R package in
-   `renv.lock`, bundles the JDBC driver, and has each study build a
-   self-contained *bundle* (code + pinned dependencies, no network calls) that
-   can be carried across the boundary.
-3. **Every result must be traceable.** Observational findings are only
-   credible if you can show exactly what produced them. All study code,
-   cohort definitions and concept sets live in git, changes reach `main`
-   through reviewed pull requests, and package versions are pinned — so a
-   result maps to one exact, rebuildable version of the code. (A short git and
-   VS Code primer is in [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md#primer-git-github-cloning-and-vs-code).)
-4. **Everyone must use the same definitions.** Two analysts looking up
-   "heart failure" independently will pick different concept IDs. charon's
-   phenotype library and its mandatory concept-lookup order
-   ([Rule 1](#rules-you-must-follow)) prevent that.
-
-Only **aggregate statistics** ever come back out of a secure environment.
+1. **A safe place to write code.** Everything runs against synthetic OMOP data
+   ([Synthea](https://github.com/synthetichealth/synthea)) in a local
+   container, so shared repos never contain PHI.
+2. **Code that runs where you cannot see it.** Secure environments are often
+   air-gapped, so packages are pinned in `renv.lock` and each study builds a
+   self-contained *bundle* with no network calls.
+3. **Traceable results.** Code, cohorts and concept sets live in git; changes
+   reach `main` only through reviewed PRs. (Git primer:
+   [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md#primer-git-github-cloning-and-vs-code).)
+4. **Shared definitions.** A phenotype library and a mandatory concept-lookup
+   order ([Rule 1](#rules-you-must-follow)) keep two analysts from picking
+   different concept IDs for "heart failure".
 
 ## The big picture
 
@@ -217,49 +170,26 @@ flowchart TB
     linkStyle 0,1,2,3,6,9,12 stroke:none,fill:none,color:transparent
 ```
 
-How to read the diagram:
-
-- **Top (GitHub).** Shared, PHI-free: the infrastructure in this repo, the
-  study templates, the phenotype library, and each study's code.
-- **Middle (each site's dev container).** A clone of the workspace on a
-  developer's machine. Code is tested here against synthetic data.
-- **Bottom of each column (secure environment).** The institution's real CDM.
-  Code goes in; only aggregate results come out. The *coordinating site* is
-  the one that authors the study and pools the aggregate results.
-
-| Property | How it is achieved |
-|---|---|
-| No PHI in shared repos | Development and CI always use Synthea synthetic data |
-| Reproducible environments | Dev container pinned by `.devcontainer/Dockerfile` and `renv.lock` |
-| Portable to air-gapped sites | Each study builds a bundle of code + pinned dependencies with no live network dependency |
-| Shared concept sets | `phenotype_library/catalog.yaml` distributes verified concept IDs |
-| Shared synthetic datasets | `synthetic_data/registry.yaml` lets studies reuse a dataset without redistributing vocabulary |
-| Multi-site synthesis | Sites return aggregates only; HADES `EvidenceSynthesis` combines them |
+Top: shared, PHI-free GitHub content. Middle: each site's dev container, where
+code is tested on synthetic data. Bottom: each institution's secure
+environment, where code goes in and only aggregate results come out. The
+*coordinating site* authors the study and pools the aggregates (HADES
+`EvidenceSynthesis`).
 
 ## Glossary
 
-Terms specific to this project (standard OHDSI terms are not repeated).
+Project-specific terms (standard OHDSI terms are not repeated).
 
 | Term | Meaning |
 |---|---|
-| **Workspace** | This repo, cloned onto your machine. It owns the shared SQL Server, vocabulary, dev container, phenotype library, and AI rules. Study repos live *inside* the workspace folder but are separate git repos. |
-| **Dev container** | A Docker container (defined in `.devcontainer/`) with R, Java, Python and all HADES packages installed. You open the workspace in VS Code and your terminal runs inside it. |
-| **`omop_synth`** | The one SQL Server database all your local studies share. |
-| **`omop_vocab`** | The schema inside `omop_synth` holding the OMOP vocabulary. Loaded once per machine from an Athena download; read by every study. |
-| **Study repo** | A separate git repo for one piece of one study. Four kinds, below. |
-| **Template** | A GitHub *template repository* you click **Use this template** on to create a study repo. The workspace includes the four templates as git submodules for reference. |
-| **Bucket** | One of the four *kinds* of repo a study is split into (synth, analysis-core, report, site-deploy). |
-| **Synth repo** (`<study>-synth`) | Generates one reusable, analysis-specific synthetic OMOP dataset with Synthea. Contains no analysis and never answers a research question. |
-| **Analysis-core repo** (`<study>`) | Cohort definitions, analysis specification, and the code that turns CDM queries into result files. Must be safe to share with any institution. |
-| **Report repo** (`<study>-report`) | Builds the manuscript (Word) from the analysis-core's result files only. Never connects to a database. |
-| **Site-deploy repo** | Your institution's private glue that gets an analysis-core *bundle* running in your secure environment. Not templated. |
-| **Bundle** | A self-contained package of study code plus pinned R packages and JDBC driver, built for transport into an air-gapped environment. |
-| **Phenotype library** | `phenotype_library/`: a catalog of concept sets and cohort definitions verified in earlier studies. |
-| **Lookup tiers** | The mandatory order for finding a concept ID: Tier 1a OHDSI Phenotype Library → Tier 1b your lab's labelled ATLAS definitions → Tier 2 local catalog → Tier 3 live vocabulary query. See [Rule 1](#rules-you-must-follow). |
-| **`[vocab query]` / `[pretraining]`** | Provenance labels on every concept ID. `[vocab query]` = confirmed against your loaded vocabulary. `[pretraining]` = recalled from AI training data and **not trustworthy** until verified. |
+| **Workspace** | This repo, cloned onto your machine. It owns the shared SQL Server, vocabulary, dev container, phenotype library and AI rules. Study repos live *inside* it but are separate git repos. |
+| **Dev container** | A Docker container (`.devcontainer/`) with R, Java, Python and HADES. You open the workspace in VS Code and your terminal runs inside it. |
+| **`omop_synth` / `omop_vocab`** | The one SQL Server database your local studies share, and the schema in it holding the OMOP vocabulary (loaded once from Athena). |
+| **Template / study repo** | A GitHub *template repository* you click **Use this template** on to create a study repo. Four kinds: see [What a study looks like](#what-a-study-looks-like). |
+| **Bundle** | Study code plus pinned R packages and JDBC driver, packaged for transport into an air-gapped environment. |
+| **Lookup tiers** | The mandatory order for finding a concept ID (OHDSI Phenotype Library → your lab's ATLAS definitions → local catalog → live query). See [Rule 1](#rules-you-must-follow). |
+| **`[vocab query]` / `[pretraining]`** | Provenance labels on every concept ID: confirmed against your loaded vocabulary, or recalled from AI training data and **not trustworthy** until verified. |
 | **Working branch** | Your personal git branch, named after your GitHub username. You never push to `main`. |
-| **Strategus** | The HADES framework that runs a multi-module analysis from a single JSON specification. Used by the analysis-core template. |
-| **circe** | The JSON format ATLAS uses for cohort definitions, rendered to SQL. |
 
 ## What a study looks like
 
@@ -276,27 +206,22 @@ between studies and drifts. Each repo is created from a template.
 | 4 | Site-deploy | `<your-site>-deploy` | — (private, institution-specific) | Turns the bundle into something your secure environment can run: site config, handoff mechanism, credentials. The only place PHI-adjacent exports or site credentials may live. |
 
 A fifth template, [`omop-etl-template`](https://github.com/Duke-Vascular-Informatics/omop-etl-template),
-is separate from the pipeline above: use it when you need to convert a *real*
-registry or flat-file source into OMOP CDM v5.4.
+is separate from this pipeline: use it to convert a *real* registry or flat-file
+source into OMOP CDM v5.4.
 
-**Where does the analysis live?** Always in the analysis-core repo built
-from `strategus-study-template` (and the manuscript in the report repo).
-`synthea-omop-template` is *only* a template for generating
-analysis-specific synthetic data: it has no analysis, report or packaging
-steps, and none should be added to a `-synth` repo. Its `cohorts/` and
-`covariates/` folders exist solely so you can check that the generated data
-actually contains the patients your study needs.
+**The analysis always lives in the analysis-core (Strategus) repo, and the
+manuscript in the report repo.** `synthea-omop-template` only generates
+analysis-specific synthetic data; its `cohorts/` and `covariates/` exist solely
+to check that the generated data contains the patients your study needs. The
+split is deliberate: the analysis-core repo is what you hand to other
+institutions, so nothing site- or report-specific may be in it, and the report
+repo must run on a laptop with only a clone and a `results/` folder, so it
+never imports `DatabaseConnector` (a query a report needs goes in the
+analysis-core's `R/extract_report_inputs.R`).
 
-**Why the split is load-bearing.** The analysis-core repo is the thing you
-hand to other institutions, so nothing site-specific or report-specific may
-be in it. The report repo must run on a laptop with only a clone and a
-`results/` folder — so it must never import `DatabaseConnector`. If you want
-to add a query to a report repo, it belongs in the analysis-core's
-`R/extract_report_inputs.R` instead.
-
-`studies.yaml` is the registry of every repo in your workspace: which bucket
-it occupies (`pipeline_role`) and how far it has migrated to this layout
-(`migration`). Check it before assuming where a given piece of code lives.
+`studies.yaml` registers every repo in your workspace, its bucket
+(`pipeline_role`) and migration status; check it before assuming where code
+lives.
 
 ### How the repos sit on disk
 
@@ -311,8 +236,7 @@ my-workspace/                  ← this repo (infrastructure)
 └── my-study-report/           ← report repo (sibling, never nested)
 ```
 
-Study repos are not part of the workspace repo. List them in the workspace
-`.gitignore` and register them in `studies.yaml`.
+Add study repos to the workspace `.gitignore` and register them in `studies.yaml`.
 
 ## What is in this repo
 
@@ -344,91 +268,57 @@ charon/
 └── omop-report-template/       # submodule → bucket 3b (report repo)
 ```
 
-How the pieces fit at runtime:
+The SQL Server container (`mssql_dev`) and the dev container start together on
+one Docker network; inside the container the database host is `mssql_dev`, not
+`localhost`. The workspace `renv.lock` (HADES + tidyverse) is restored when the
+container builds.
 
-| Layer | Lives in | Purpose |
-|---|---|---|
-| SQL Server (Azure SQL Edge, ARM64-native) | `docker-compose.yml` | One database server shared by every study on the machine |
-| OMOP vocabulary | `omop_vocab/` on disk → `omop_vocab` schema | Loaded once; every study reads it |
-| R + Java + Python | `.devcontainer/` | Same toolchain for everyone, **pinned to the versions your secure environment provides** (see below). Java is needed by `DatabaseConnector`/JDBC; a Python virtualenv (`/opt/mlenv`) is used to apply Python-based prediction models. |
-| R packages | `renv.lock` | Full HADES + tidyverse, restored when the container builds |
-| Study logic | Separate study repos | Cohorts, analysis spec, results |
-
-When you open the workspace in VS Code's dev container, the SQL Server
-container and the dev container start together on one Docker network. The dev
-container reaches the database at host `mssql_dev` (set automatically as
-`MSSQL_HOST`), not `localhost`.
-
-### Match the toolchain to your secure environment
-
-Your code is developed in the container but run in your institution's secure
-analytics environment, so the two must use the same **R, Java and Python
-versions**. The defaults (R 4.5.2, Java 17, Python 3.12) are those of the
-environment charon was built for, not necessarily yours. **Before your first
-build**, find your secure environment's versions and set `R_VERSION`,
-`JAVA_VERSION` and `PYTHON_VERSION` in `.env`; the container then builds to
-those. If you change R, reconcile `renv.lock` too. Full steps:
+**Match the toolchain to your secure environment.** Code developed here must run
+there, so the container's **R, Java and Python versions must match** it. The
+defaults (R 4.5.2, Java 17, Python 3.12) are not necessarily yours: before your
+first build, set `R_VERSION`, `JAVA_VERSION` and `PYTHON_VERSION` in `.env`, and
+reconcile `renv.lock` if R changes. Steps:
 [`docs/GETTING_STARTED.md` → Step 6.0](docs/GETTING_STARTED.md#60-match-the-container-to-your-secure-environment-before-the-first-build).
 
-### Shared R packages: two-level renv
-
-| Level | File | Holds |
-|---|---|---|
-| Workspace | `renv.lock` at the workspace root | Everything shared: HADES, tidyverse, reporting packages, database/ETL packages |
-| Study repo | `<study>/renv.lock` | Only packages that study needs *beyond* the workspace lockfile — usually nothing |
-
-If a package is already in the workspace lockfile, do not add it to a study's.
-If a study needs a new reusable package, add it at the workspace level first
-(a PR here with `renv::install()` + `renv::snapshot()` run from the workspace
-root).
+**Two-level renv.** The workspace `renv.lock` holds everything shared; a study
+repo's `renv.lock` holds only what that study needs beyond it (usually
+nothing). Add reusable packages at the workspace level first, via a PR here.
 
 ## Rules you must follow
 
-These are enforced for AI assistants by `CLAUDE.md` and apply equally to
-humans. Read `CLAUDE.md` in full before your first change.
+Enforced for AI assistants by `CLAUDE.md` and equally binding on humans; read
+`CLAUDE.md` before your first change.
 
-1. **Rule 1 — Concept-ID transparency.** Never write a concept ID into code,
-   SQL or a CSV until you have checked, *in order*: (1a) the OHDSI Phenotype
-   Library, (1b) your lab's label-prefixed ATLAS cohorts/concept sets
-   (authoritative — a local definition should converge to them), (2) the
-   local `phenotype_library/catalog.yaml`, and only then (3) a live vocabulary
-   query. Label every ID `[vocab query]` or `[pretraining]`; only the former
-   may be committed. Concept IDs recalled from memory — including by an AI —
-   have been wrong in this vocabulary build. After a Tier-3 lookup, add the
-   result to the catalog so the next study skips it.
-2. **Rule 2 — Package priority.** HADES packages first, tidyverse second,
-   anything else only from the project's CRAN mirror. No `dbplyr`, `odbc`, or
-   direct `DBI` — use `DatabaseConnector` and `SqlRender`.
-3. **Rule 3 — Verbose comments, OHDSI style.** File headers, section banners,
-   and a trailing comment on every hard-coded concept ID naming the concept
-   and its provenance label.
-4. **Branching.** Work on a personal branch named after your GitHub username;
-   open PRs into `main`; squash-merge only. Never push to `main` or to
-   someone else's branch.
-5. **No PHI, no secrets.** Output only aggregate statistics. Never commit
-   `.env`, `omop_vocab/`, or anything from a secure environment.
-6. **OSF stays private.** Protocol projects on OSF are created private and are
-   made public only by a person, manually, after team approval.
+1. **Concept-ID transparency.** Never write a concept ID into code, SQL or a CSV
+   until you have checked, in order: (1a) OHDSI Phenotype Library, (1b) your
+   lab's label-prefixed ATLAS definitions (authoritative), (2) the local
+   `phenotype_library/catalog.yaml`, then (3) a live vocabulary query. Tag every
+   ID `[vocab query]` or `[pretraining]`; only the former may be committed.
+   Remembered IDs, including an AI's, have been wrong in this vocabulary.
+2. **Package priority.** HADES first, tidyverse second, anything else only from
+   the project CRAN mirror. No `dbplyr`, `odbc` or direct `DBI`: use
+   `DatabaseConnector` and `SqlRender`.
+3. **Verbose OHDSI-style comments**, including a trailing comment on every
+   hard-coded concept ID naming the concept and its provenance label.
+4. **Branching.** Work on your own branch (your GitHub username); PRs into
+   `main`, squash-merge, owner approval required. Never push to `main` or
+   another person's branch.
+5. **No PHI, no secrets.** Only aggregate output; never commit `.env`,
+   `omop_vocab/` or anything from a secure environment.
+6. **OSF stays private** until a person releases it manually.
 
 ## Prerequisites
 
-You need accounts and software before the first-time setup:
+Before first-time setup you need: a GitHub account (its username becomes your
+branch name), Git, Docker Desktop 4.x+, VS Code with the *Dev Containers*
+extension, a free Athena account (to download the OMOP vocabulary), optionally a
+free UMLS account (only to rebuild CPT-4), and **the R, Java and Python versions
+of your secure analytics environment** (see above).
 
-| What | Why |
-|---|---|
-| GitHub account | Hosts the repos; its username becomes your branch name |
-| Git | Version control |
-| Docker Desktop 4.x+ | Runs SQL Server and the dev container |
-| The R, Java and Python versions of your secure analytics environment | The container must be built to match them (Step 6.0 of Getting Started) |
-| VS Code + the *Dev Containers* extension | Opens the workspace inside the container |
-| Athena account (free, athena.ohdsi.org) | Downloads the OMOP vocabulary |
-| UMLS account (free, optional) | Only needed to rebuild CPT-4 codes |
-
-Hardware: about **35 GB** of disk in use (vocabulary CSVs, loaded database,
-image, R packages), with Docker's virtual-disk limit set to **60–80 GB** for
-build-cache headroom; **16 GB RAM** for Docker (12 GB minimum — the vocabulary
-load is killed silently below that). The Claude Code assistant installs itself
-inside the container; you supply an Anthropic API key in `.env`.
+Hardware: ~**35 GB** disk in use (Docker disk limit **60–80 GB**) and **16 GB
+RAM** for Docker (12 GB minimum; the vocabulary load is killed silently below
+that). Claude Code installs itself in the container; add an Anthropic API key in
+`.env`.
 
 ## Where to go next
 
