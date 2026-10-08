@@ -23,22 +23,22 @@ When a command changes:
 | Clone your analysis-core study repo | `git clone https://github.com/<your-org>/<your-study>.git` | [Step 10](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
 | Create your working branch | `BRANCH=$(gh api user --jq .login) && git checkout -b "$BRANCH" && git push -u origin "$BRANCH"` | [Step 10](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
 | Clone your report repo | `git clone https://github.com/<your-org>/<your-study>-report.git` | [Step 10](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
-| Environment setup (`synthea-omop-template`) | `Rscript workflow/01_setup_synthea_etl_qc_env.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
-| Define cohort, outcome, and covariates | `Rscript workflow/02_define_omop_cohort_outcome_covariates.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
+| Environment setup (`-synth` repo) | `Rscript workflow/01_setup_synthea_etl_qc_env.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
+| Validate cohort, outcome, and covariate definitions (`-synth` repo) | `Rscript workflow/02_define_omop_cohort_outcome_covariates.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Validate Synthea module | `Rscript workflow/03_generate_synthea_module_artifacts.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Generate Synthea CSV (bash) | `bash workflow/04_generate_synthea_csv.sh` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Generate Synthea CSV (PowerShell) | `powershell -ExecutionPolicy Bypass -File workflow/04_generate_synthea_csv.ps1` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Run ETL | `Rscript workflow/05_etl_csv_to_omop.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Run QC checks | `Rscript workflow/06_quality_check_defined_phenotypes.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
-| Setup analysis environment | `Rscript workflow/07_setup_analysis_env.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
-| Run analysis (`synthea-omop-template`) | `Rscript workflow/08_run_analysis_and_manuscript_report.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Generate the manuscript report (`omop-report-template`) | `Rscript GenerateReport.R` | [Step 10.5](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
-| Validate customization status | `Rscript scripts/check_setup.R` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
-| Look up OMOP concepts | `Rscript scripts/concept_lookup.R "<clinical term>" <Domain>` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
-| Create support bundle | `Rscript scripts/create_support_bundle.R` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
+| Validate customization status (`-synth` repo) | `Rscript scripts/check_setup.R` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
+| Look up OMOP concepts (run inside `synthea-omop-template/` or a `-synth` repo) | `Rscript scripts/concept_lookup.R "<clinical term>" <Domain>` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
+| Create support bundle (`-synth` repo) | `Rscript scripts/create_support_bundle.R` | [Analyst Playbook](ANALYST_PLAYBOOK.md) |
 
-`strategus-study-template` and `omop-report-template` repos don't have `workflow/01-09` —
-see those templates' own `CHECKLIST.md` for their canonical commands instead of this table.
+The numbered `workflow/01–06` commands above belong to **`-synth` repos**
+(`synthea-omop-template`), which only generate synthetic data. The analysis runs in a
+`strategus-study-template` repo and the report in an `omop-report-template` repo; neither
+has a `workflow/` folder — see each template's own `CHECKLIST.md` for its commands.
 
 ---
 

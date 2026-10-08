@@ -4,6 +4,11 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
       args:
+        # Toolchain versions — set in .env to match your secure analytics
+        # environment (see .env.example and the Dockerfile header).
+        R_VERSION: ${R_VERSION:-4.5.2}
+        JAVA_VERSION: ${JAVA_VERSION:-17}
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
         # Pass CRAN_MIRROR from .env into the build so R uses the same mirror
         # at build time (renv install) as it does at runtime.
         CRAN_MIRROR: ${CRAN_MIRROR:-https://archive.linux.duke.edu/cran/}

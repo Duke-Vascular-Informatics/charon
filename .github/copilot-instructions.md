@@ -72,13 +72,15 @@ starting a new workspace from this template.
 
 ## Template Customization — Pre-flight Check
 
-When a user asks for setup help, run the automated check first:
+Know the repo type first. Strategus analysis-core and report repos have their own `CHECKLIST.md` — use it. The check below is for `-synth` repos (`synthea-omop-template`), which are for synthetic data generation only; analysis lives in the Strategus repo.
+
+When a user asks for setup help in a `-synth` repo, run the automated check first (the script ships in that repo, not the workspace root):
 
 ```bash
 Rscript scripts/check_setup.R
 ```
 
-This scans `study_params.yaml`, cohort SQL files, and covariate CSVs without a database connection and prints `[OK]` / `[WARN]` / `[FAIL]` for each item. Exit code 0 = ready for Step 8.
+This scans `study_params.yaml`, cohort SQL files, and covariate CSVs without a database connection and prints `[OK]` / `[WARN]` / `[FAIL]` for each item. Exit code 0 = ready to generate data.
 
 If the script is not available, check these items manually:
 
@@ -86,7 +88,7 @@ If the script is not available, check these items manually:
 2. Read the cohort SQL files referenced in `target.sql_file`, `outcome.sql_file`, `comparator.sql_file` — flag any `concept_id = 0`.
 3. Check `covariates/covariates.csv` for placeholder rows (`covariate_id` matching `covariate_1`, `covariate_2`, etc.).
 4. Check `covariates/covariate_concepts.csv` for `concept_id = 0` rows.
-5. Confirm at least one `analyses:` flag is set to `true` in `study_params.yaml`.
+5. Confirm the generation parameters (population, age range, seed) are set.
 
 Report using `[OK]` / `[WARN]` / `[FAIL]` format consistent with `scripts/check_setup.R`.
 

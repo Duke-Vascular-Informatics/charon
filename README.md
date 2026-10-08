@@ -6,63 +6,75 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23189333.svg)](https://doi.org/10.5281/zenodo.23189333)
 
+charon is a **workspace template** for running observational studies on an
+OMOP CDM v5.4 database with the OHDSI HADES R packages. It gives you, ready
+to use:
 
+- a **dev container** (R, Java and Python — versions you set to match your
+  secure analytics environment) plus a **SQL Server** database in Docker, so
+  every collaborator has an identical environment;
+- a **shared phenotype library** — a catalog of concept sets that have already
+  been verified against the vocabulary, so nobody re-derives them;
+- a **registry of reusable synthetic datasets**, so a new study can develop
+  against realistic fake patients without generating its own;
+- **four study templates** (one per kind of repo a study needs) and a
+  convention for splitting a study across repos;
+- **AI-assistant rules** (`CLAUDE.md`, Copilot instructions) that enforce
+  the lab's OHDSI conventions when an assistant writes code for you.
 
-A reusable scaffold for OMOP CDM observational studies: a pre-configured dev
-container (SQL Server, R 4.5, Java 17), a shared phenotype library, a
-multi-repo analysis pipeline convention, and AI-assistant coding rules for
-the OHDSI HADES R toolstack. Fork it, or click **Use this template**, to
-stand up your own lab's workspace.
+Fork the repo, or click **Use this template**, to stand up your own lab's
+workspace.
 
-A study is not necessarily one repo. See
-[**Multi-Repo Analysis Pipeline**](#multi-repo-analysis-pipeline) below for
-how a study's analysis core, manuscript report, and deployment machinery
-split across repos, and which template each one starts from.
+> **Who this README is for.** It assumes you know the basics of OMOP and
+> OHDSI (CDM tables, concept IDs, Athena, ATLAS, HADES), you can read R and
+> Python, and you know roughly what Java is for (HADES uses it through JDBC).
+> It assumes you know **nothing** about this project. Every charon-specific
+> term is defined the first time it appears, and again in the
+> [glossary](#glossary).
 
----
-
-## Getting your own copy
-
-Click **Use this template** on this repo (or clone it directly), then
-replace the placeholder instance data with your own — nothing to delete or
-rename, every file already exists under its real name with one illustrative
-entry and inline schema comments:
-
-- `studies.yaml` — your study/report/synth/ETL repo registry
-- `contributors.yaml` — your contributor list (regenerate `CONTRIBUTORS.md` with `Rscript scripts/sync_contributors.R` after editing)
-- `phenotype_library/catalog.yaml` — your verified concept sets
-- `osf/osf_projects.csv` / `osf/osf_files.csv` — your OSF protocol hosting registry
-- `synthetic_data/registry.yaml` — your reusable synthetic dataset registry
-- `WORKSPACE_ROSTER.md` — your repo layout and any repo-specific rules
-- `CITATION.cff` — update the authors/repo-URL fields with your own
-
-Everything else — `scripts/`, `phenotype_library/scripts/`,
-`synthetic_data/scripts/`, the four `*-template` submodules, the
-devcontainer, and `CLAUDE.md`'s generic conventions (Rules 1-3, branch
-strategy, language/runtime, security) — is infrastructure, kept as-is.
-
-### Staying in sync with charon
-
-If you want to keep pulling infra fixes made here after you've started your
-own workspace from this template, add this repo as a second remote and use
-the included sync scripts — no shared git history or merge required:
-
-```bash
-git remote add charon https://github.com/Duke-Vascular-Informatics/charon.git
-scripts/pull_charon_updates.sh    # bring charon's infra fixes into your workspace
-scripts/push_charon_updates.sh -m "<message>"   # contribute a fix back upstream
-```
-
-Both scripts read `scripts/charon_manifest.txt` for the list of shared-infra
-paths — your own lab's data (`studies.yaml`, `contributors.yaml`, the
-phenotype catalog, `WORKSPACE_ROSTER.md`, OSF registries) is deliberately
-excluded and never touched by either script.
+**Contents:**
+[What problem this solves](#what-problem-this-solves) ·
+[The big picture](#the-big-picture) ·
+[Glossary](#glossary) ·
+[What a study looks like](#what-a-study-looks-like) ·
+[What is in this repo](#what-is-in-this-repo) ·
+[Rules you must follow](#rules-you-must-follow) ·
+[Prerequisites](#prerequisites) ·
+[Where to go next](#where-to-go-next) ·
+[Using charon for your own lab](#using-charon-for-your-own-lab)
 
 ---
 
-## Federated Analysis Strategy
+## What problem this solves
 
-This workspace is designed for **federated observational research**: analytic code is developed in a shared, open environment using synthetic data, then transported into each institution's secure environment where it runs against real patient data. No patient data ever leaves the institution.
+Real patient data cannot leave the institution that owns it. A multi-site
+study therefore cannot pool data; instead, **the code travels and the data
+stays put**. That creates four practical problems, and charon is built
+around them:
+
+1. **You need somewhere safe to write the code.** You cannot develop against
+   real patients on a laptop. charon runs everything against *synthetic*
+   OMOP data (generated with [Synthea](https://github.com/synthetichealth/synthea))
+   inside a local container, so the shared GitHub repos never contain PHI.
+2. **The code has to run somewhere you cannot see.** The secure environment
+   at each site is often air-gapped. charon pins every R package in
+   `renv.lock`, bundles the JDBC driver, and has each study build a
+   self-contained *bundle* (code + pinned dependencies, no network calls) that
+   can be carried across the boundary.
+3. **Every result must be traceable.** Observational findings are only
+   credible if you can show exactly what produced them. All study code,
+   cohort definitions and concept sets live in git, changes reach `main`
+   through reviewed pull requests, and package versions are pinned — so a
+   result maps to one exact, rebuildable version of the code. (A short git and
+   VS Code primer is in [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md#primer-git-github-cloning-and-vs-code).)
+4. **Everyone must use the same definitions.** Two analysts looking up
+   "heart failure" independently will pick different concept IDs. charon's
+   phenotype library and its mandatory concept-lookup order
+   ([Rule 1](#rules-you-must-follow)) prevent that.
+
+Only **aggregate statistics** ever come back out of a secure environment.
+
+## The big picture
 
 ```mermaid
 %%{init: {'themeVariables': {'edgeLabelBackground': '#ffffff', 'tertiaryTextColor': '#111111'}}}%%
@@ -71,13 +83,13 @@ flowchart TB
         direction TB
         subgraph GHUB["**☁️ GitHub Dev Container Repo**"]
             direction LR
-            GH_INFRA["**🐳 Dev Container Infrastructure**<br/>R 4.5 · SQL Server · Java 17<br/>Spans all studies"]
+            GH_INFRA["**🐳 Dev Container Infrastructure**<br/>R · Java · Python · SQL Server<br/>Spans all studies"]
             GH_AI["**🤖 AI Coding Instructions**<br/>CLAUDE.md · Copilot instructions<br/>Opinionated OHDSI conventions"]
-            GH_TEMP["**Study Templates**<br/>Descriptive · Causal Inference · Prognostic Modelling"]
+            GH_TEMP["**Study Templates**<br/>Synthetic data · Analysis · Report · ETL"]
             GH_PHENO["**🧬 Shared Phenotype Library**<br/>catalog.yaml<br/>Verified concept sets"]
             GH_INFRA ~~~ GH_AI ~~~ GH_PHENO ~~~ GH_TEMP
         end
-        GH_STUDY["**Analysis-Specific Study Code**<br/>Cohort SQL · Covariate mapping · Workflow steps"]
+        GH_STUDY["**Analysis-Specific Study Code**<br/>Cohort definitions · Analysis spec"]
         GHUB ~~~ GH_STUDY
     end
 
@@ -141,287 +153,270 @@ flowchart TB
     linkStyle 0,1,2,3,6,9,12 stroke:none,fill:none,color:transparent
 ```
 
-**Key properties of this design:**
+How to read the diagram:
+
+- **Top (GitHub).** Shared, PHI-free: the infrastructure in this repo, the
+  study templates, the phenotype library, and each study's code.
+- **Middle (each site's dev container).** A clone of the workspace on a
+  developer's machine. Code is tested here against synthetic data.
+- **Bottom of each column (secure environment).** The institution's real CDM.
+  Code goes in; only aggregate results come out. The *coordinating site* is
+  the one that authors the study and pools the aggregate results.
 
 | Property | How it is achieved |
 |---|---|
-| No PHI in central repo | Dev & CI always run against Synthea synthetic data |
-| Reproducible environments | Dev container pinned via `renv.lock` and `Dockerfile` |
-| Portable to air-gapped sites | Each analysis-core template's own bundle-building step packages code + pinned dependencies for transport, with no live dependencies at the destination |
-| Shared concept sets | `phenotype_library/catalog.yaml` distributes verified concept IDs to all sites |
-| Shared synthetic datasets | `synthetic_data/registry.yaml` lets studies reuse a disease/procedure/outcome-specific dataset without redistributing vocabulary |
-| Multi-site synthesis | Each site returns only aggregate statistics; `EvidenceSynthesis` combines them |
+| No PHI in shared repos | Development and CI always use Synthea synthetic data |
+| Reproducible environments | Dev container pinned by `.devcontainer/Dockerfile` and `renv.lock` |
+| Portable to air-gapped sites | Each study builds a bundle of code + pinned dependencies with no live network dependency |
+| Shared concept sets | `phenotype_library/catalog.yaml` distributes verified concept IDs |
+| Shared synthetic datasets | `synthetic_data/registry.yaml` lets studies reuse a dataset without redistributing vocabulary |
+| Multi-site synthesis | Sites return aggregates only; HADES `EvidenceSynthesis` combines them |
 
----
+## Glossary
 
-## Multi-Repo Analysis Pipeline
+Terms specific to this project (standard OHDSI terms are not repeated).
 
-A study answering one research question is split across up to four
-independent repos, not authored in one. Each split repo has a **template**
-you scaffold it from — the same relationship this workspace has with
-`synthea-omop-template`, generalized. The rationale, in short: deployment
-machinery and report code copied into every study repo drift, and fixing the
-same bug five times is how that was discovered.
+| Term | Meaning |
+|---|---|
+| **Workspace** | This repo, cloned onto your machine. It owns the shared SQL Server, vocabulary, dev container, phenotype library, and AI rules. Study repos live *inside* the workspace folder but are separate git repos. |
+| **Dev container** | A Docker container (defined in `.devcontainer/`) with R, Java, Python and all HADES packages installed. You open the workspace in VS Code and your terminal runs inside it. |
+| **`omop_synth`** | The one SQL Server database all your local studies share. |
+| **`omop_vocab`** | The schema inside `omop_synth` holding the OMOP vocabulary. Loaded once per machine from an Athena download; read by every study. |
+| **Study repo** | A separate git repo for one piece of one study. Four kinds, below. |
+| **Template** | A GitHub *template repository* you click **Use this template** on to create a study repo. The workspace includes the four templates as git submodules for reference. |
+| **Bucket** | One of the four *kinds* of repo a study is split into (synth, analysis-core, report, site-deploy). |
+| **Synth repo** (`<study>-synth`) | Generates one reusable, analysis-specific synthetic OMOP dataset with Synthea. Contains no analysis and never answers a research question. |
+| **Analysis-core repo** (`<study>`) | Cohort definitions, analysis specification, and the code that turns CDM queries into result files. Must be safe to share with any institution. |
+| **Report repo** (`<study>-report`) | Builds the manuscript (Word) from the analysis-core's result files only. Never connects to a database. |
+| **Site-deploy repo** | Your institution's private glue that gets an analysis-core *bundle* running in your secure environment. Not templated. |
+| **Bundle** | A self-contained package of study code plus pinned R packages and JDBC driver, built for transport into an air-gapped environment. |
+| **Phenotype library** | `phenotype_library/`: a catalog of concept sets and cohort definitions verified in earlier studies. |
+| **Lookup tiers** | The mandatory order for finding a concept ID: Tier 1a OHDSI Phenotype Library → Tier 1b your lab's labelled ATLAS definitions → Tier 2 local catalog → Tier 3 live vocabulary query. See [Rule 1](#rules-you-must-follow). |
+| **`[vocab query]` / `[pretraining]`** | Provenance labels on every concept ID. `[vocab query]` = confirmed against your loaded vocabulary. `[pretraining]` = recalled from AI training data and **not trustworthy** until verified. |
+| **Working branch** | Your personal git branch, named after your GitHub username. You never push to `main`. |
+| **Strategus** | The HADES framework that runs a multi-module analysis from a single JSON specification. Used by the analysis-core template. |
+| **circe** | The JSON format ATLAS uses for cohort definitions, rendered to SQL. |
 
-| # | Role | Repo name | Template | Contents |
+## What a study looks like
+
+A study is **not one repo**. It is split by *audience*, because code that
+mixes deployment scripts, report formatting and cohort logic gets copied
+between studies and drifts. Each repo is created from a template.
+
+| # | Role | Repo name | Create it from | Holds |
 |---|---|---|---|---|
-| 1 | synth | `<study>-synth` | `synthea-omop-template` | Synthea module + Steps 1–6 only, for one reusable synthetic OMOP CDM dataset. Registered in `synthetic_data/registry.yaml`. Never answers a research question. |
-| 2 | analysis-core | `<study>` | [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) (no in-repo synthetic-data generation) or `synthea-omop-template` (needs Synthea generation + ETL + QC alongside the analysis) | Cohorts, analysis spec, the extract layer that turns CDM queries into result CSVs. Must be shareable with any institution — no report code, no PHI. |
-| 3 | report-toolkit | `<your-org>-report-toolkit` | — (singleton, not scaffolded per-study) | Generic figure/table helpers shared across every report repo. Nothing study-specific. |
-| 3b | report-repo | `<study>-report` | [`omop-report-template`](https://github.com/Duke-Vascular-Informatics/omop-report-template) | One study's Word manuscript composition — which tables, which figures, the narrative — rendered from bucket 2's result artifacts only. No database, no VPN, no credentials. |
-| 4 | site-deploy | `<your-site>-deploy` | — (not on GitHub; typically a private, institution-hosted repo) | Turns the analysis-core repo's portable bundle into a form your secure environment can actually run: applies site-specific config (schema names, connection details), handles whatever handoff mechanism your institution requires (an internal Git host, a manual file transfer, a change-control ticket), and is the one place PHI-adjacent exports or site credentials are allowed to live — never in the analysis-core or report repos. |
+| 1 | Synth | `<study>-synth` | [`synthea-omop-template`](https://github.com/Duke-Vascular-Informatics/synthea-omop-template) | **Data generation only.** An analysis-specific Synthea disease module, plus generation → ETL → quality-check steps (`workflow/01–06`) producing one reusable synthetic CDM. Registered in `synthetic_data/registry.yaml`. **Optional** — only if no existing dataset fits. Contains no analysis. |
+| 2 | Analysis-core | `<study>` | [`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) | circe cohort JSON, the Strategus analysis spec, the extract step that writes result CSVs. No report code, no PHI. |
+| 3 | Report toolkit | `omop-report-toolkit` | — (one shared package) | Generic table/figure helpers used by every report repo. |
+| 3b | Report | `<study>-report` | [`omop-report-template`](https://github.com/Duke-Vascular-Informatics/omop-report-template) | One study's manuscript: which tables, which figures, the narrative. Reads analysis-core output only. **Every study gets one**, even a purely descriptive one. |
+| 4 | Site-deploy | `<your-site>-deploy` | — (private, institution-specific) | Turns the bundle into something your secure environment can run: site config, handoff mechanism, credentials. The only place PHI-adjacent exports or site credentials may live. |
 
-**Site-deploy is intentionally the least standardized bucket.** Unlike the
-other three, there's no shared template for it — every institution's secure
-environment and governance process is different. What stays constant is the
-*shape*: your analysis-core template produces a self-contained bundle (code
-+ pinned dependencies, no live network calls required), and site-deploy is
-whatever you build to get that bundle running against your real CDM. Keep it
-in its own repo, separate from the analysis-core and report repos, so a
-site-specific credential or a PHI-producing export script never ends up in
-something you'd otherwise publish or share with a collaborating institution.
+A fifth template, [`omop-etl-template`](https://github.com/Duke-Vascular-Informatics/omop-etl-template),
+is separate from the pipeline above: use it when you need to convert a *real*
+registry or flat-file source into OMOP CDM v5.4.
 
-**Which template for a new study's analysis core?** Use
-`strategus-study-template` unless the study needs the numbered
-`workflow/01–09` scaffold (Synthea generation + ETL + QC in the same repo as
-the analysis) — that's `synthea-omop-template`'s purpose, and also what the
-`-synth` convention is built on. See `strategus-study-template`'s own README
-for the two-path decision in more detail.
+**Where does the analysis live?** Always in the analysis-core repo built
+from `strategus-study-template` (and the manuscript in the report repo).
+`synthea-omop-template` is *only* a template for generating
+analysis-specific synthetic data: it has no analysis, report or packaging
+steps, and none should be added to a `-synth` repo. Its `cohorts/` and
+`covariates/` folders exist solely so you can check that the generated data
+actually contains the patients your study needs.
 
-**Every new study also gets a report repo.** Even a purely descriptive study
-that will only ever produce tables and figures for a manuscript should create
-its `<study>-report` from `omop-report-template` rather than importing
-`ggplot2`/`officer`/`flextable` into the analysis-core repo — that coupling
-is exactly what the bucket 2 / bucket 3b split exists to prevent. See
-`omop-report-template`'s README and `CHECKLIST.md`.
+**Why the split is load-bearing.** The analysis-core repo is the thing you
+hand to other institutions, so nothing site-specific or report-specific may
+be in it. The report repo must run on a laptop with only a clone and a
+`results/` folder — so it must never import `DatabaseConnector`. If you want
+to add a query to a report repo, it belongs in the analysis-core's
+`R/extract_report_inputs.R` instead.
 
-`studies.yaml` is the source of truth for which bucket every repo in this
-workspace currently occupies, and how far each one has migrated (`migration:`
-field per entry) — check there before assuming a given study's report or
-deploy code has already moved to its own repo.
+`studies.yaml` is the registry of every repo in your workspace: which bucket
+it occupies (`pipeline_role`) and how far it has migrated to this layout
+(`migration`). Check it before assuming where a given piece of code lives.
 
----
+### How the repos sit on disk
 
-## Workspace Structure
+Study repos are cloned *inside* the workspace folder, as siblings:
+
+```
+my-workspace/                  ← this repo (infrastructure)
+├── .env                       ← your secrets (gitignored)
+├── omop_vocab/                ← Athena vocabulary CSVs (gitignored)
+├── my-study/                  ← analysis-core repo (own git remote)
+│   └── output/                ← result files; the report repo reads these
+└── my-study-report/           ← report repo (sibling, never nested)
+```
+
+Study repos are not part of the workspace repo. List them in the workspace
+`.gitignore` and register them in `studies.yaml`.
+
+## What is in this repo
 
 ```
 charon/
-├── docker-compose.yml          # Shared SQL Server container (Azure SQL Edge)
-├── .devcontainer/               # VS Code dev container definition
-│   ├── devcontainer.json
-│   ├── docker-compose.yml      # Dev container service + volume mounts
-│   ├── Dockerfile              # R 4.5.2 + Java 17 + system dependencies
-│   └── setup-claude-headless.sh  # Claude Code headless auth bootstrap
-├── renv.lock                   # Workspace-level R package lockfile (full HADES + tidyverse stack)
-├── renv/activate.R             # renv bootstrap — sourced by .Rprofile on container start
-├── .Rprofile                   # Activates workspace renv so all /workspace Rscript calls find packages
-├── .env.example                # Template for local secrets (SQL Server password)
+├── docker-compose.yml          # Shared SQL Server container (container name: mssql_dev)
+├── .devcontainer/              # Dev container: Dockerfile, compose overlay, VS Code config
+├── renv.lock                   # Workspace-wide R package lockfile (HADES + tidyverse)
+├── .Rprofile                   # Activates renv; loads .env (real environment wins over .env)
+├── .env.example                # Template for your secrets file
 │
-├── studies.yaml                 # Registry of all study and ETL repos in this workspace (placeholder)
-├── contributors.yaml             # Contributor identity and CRediT roles (placeholder)
-├── WORKSPACE_ROSTER.md          # Repo layout and repo-specific rules (placeholder)
+├── CLAUDE.md                   # Rules for AI assistants — read it, it applies to you too
+├── .github/                    # Copilot instructions (same rules, Copilot format)
 │
-├── docs/                        # Workspace-level setup guides and reference docs
-├── scripts/                     # Workspace-level utility scripts + charon sync tooling
-├── infrastructure/               # Workspace-level setup and vocabulary loader scripts
-│   ├── setup/
-│   └── scripts/
-├── phenotype_library/            # Shared verified concept sets (catalog.yaml + lookup scripts, placeholder)
-├── synthetic_data/               # Shared synthetic OMOP CDM dataset registry (placeholder)
-├── osf/                          # OSF protocol hosting registry + sync scripts (placeholder)
+├── studies.yaml                # Registry of your study repos (placeholder content)
+├── contributors.yaml           # Contributors and CRediT roles (placeholder)
+├── WORKSPACE_ROSTER.md         # Your repos and repo-specific rules (placeholder)
 │
-├── synthea-omop-template/        # Synthetic-data-generation study template (git submodule) — workflow/01-09, used by -synth repos
-├── omop-etl-template/            # ETL template — copy this for each new registry data source (git submodule)
-├── strategus-study-template/     # Strategus/circe analysis-core template (git submodule)
-└── omop-report-template/         # Bucket 3b report-repo template (git submodule)
+├── docs/                       # Onboarding and reference docs — start at docs/GETTING_STARTED.md
+├── infrastructure/             # One-time setup: vocabulary loader, host bootstrap scripts
+├── scripts/                    # Workspace utilities + charon sync tooling
+├── phenotype_library/          # Verified concept-set catalog + lookup scripts
+├── synthetic_data/             # Synthetic dataset registry + export/import scripts
+├── osf/                        # Registry and scripts for hosting protocols on OSF (private)
+│
+├── synthea-omop-template/      # submodule → bucket 1 (-synth repos; synthetic data generation only)
+├── omop-etl-template/          # submodule → real-source-to-OMOP ETL
+├── strategus-study-template/   # submodule → bucket 2 (analysis-core; all analysis)
+└── omop-report-template/       # submodule → bucket 3b (report repo)
 ```
 
-> Study, report, and synth repos beyond the four submodules are NOT part of
-> this repo — they are independent repositories you create per study and
-> gitignore from this one. See `studies.yaml` for the registry.
-
----
-
-## How It Works
-
-This workspace separates **shared infrastructure** from **study-specific code**:
+How the pieces fit at runtime:
 
 | Layer | Lives in | Purpose |
 |---|---|---|
-| SQL Server database | `docker-compose.yml` + `.env` | One shared database for all studies |
-| OMOP vocabulary | `omop_vocab/` (not committed) | Loaded once; shared across all studies |
-| Dev container (R + Java) | `.devcontainer/` | Consistent R environment per study |
-| R packages (workspace) | `renv.lock` + `renv/activate.R` | Full HADES + tidyverse stack; restored on container build so infrastructure scripts work from `/workspace` without needing to cd into a study subfolder |
-| Study code | `synthea-omop-template/` (or other study repos) | Analysis logic, cohorts, parameters |
+| SQL Server (Azure SQL Edge, ARM64-native) | `docker-compose.yml` | One database server shared by every study on the machine |
+| OMOP vocabulary | `omop_vocab/` on disk → `omop_vocab` schema | Loaded once; every study reads it |
+| R + Java + Python | `.devcontainer/` | Same toolchain for everyone, **pinned to the versions your secure environment provides** (see below). Java is needed by `DatabaseConnector`/JDBC; a Python virtualenv (`/opt/mlenv`) is used to apply Python-based prediction models. |
+| R packages | `renv.lock` | Full HADES + tidyverse, restored when the container builds |
+| Study logic | Separate study repos | Cohorts, analysis spec, results |
 
-When you open the workspace in VS Code Dev Containers, both the SQL Server service and the dev container service start together. The study repo runs inside the dev container and connects to the shared SQL Server over the internal Docker network.
+When you open the workspace in VS Code's dev container, the SQL Server
+container and the dev container start together on one Docker network. The dev
+container reaches the database at host `mssql_dev` (set automatically as
+`MSSQL_HOST`), not `localhost`.
 
----
+### Match the toolchain to your secure environment
 
-## Relationship with a Study Repo
+Your code is developed in the container but run in your institution's secure
+analytics environment, so the two must use the same **R, Java and Python
+versions**. The defaults (R 4.5.2, Java 17, Python 3.12) are those of the
+environment charon was built for, not necessarily yours. **Before your first
+build**, find your secure environment's versions and set `R_VERSION`,
+`JAVA_VERSION` and `PYTHON_VERSION` in `.env`; the container then builds to
+those. If you change R, reconcile `renv.lock` too. Full steps:
+[`docs/GETTING_STARTED.md` → Step 6.0](docs/GETTING_STARTED.md#60-match-the-container-to-your-secure-environment-before-the-first-build).
 
-A study repo lives inside this workspace folder as a sibling clone, and the
-workspace provides the SQL Server and environment while the study repo
-provides the science. Which template it's built from depends on the
-analysis-core path (see [Multi-Repo Analysis Pipeline](#multi-repo-analysis-pipeline)
-above):
+### Shared R packages: two-level renv
 
-**[`strategus-study-template`](https://github.com/Duke-Vascular-Informatics/strategus-study-template) (current, for new studies)** —
-declarative circe cohort definitions executed by OHDSI Strategus:
+| Level | File | Holds |
+|---|---|---|
+| Workspace | `renv.lock` at the workspace root | Everything shared: HADES, tidyverse, reporting packages, database/ETL packages |
+| Study repo | `<study>/renv.lock` | Only packages that study needs *beyond* the workspace lockfile — usually nothing |
 
-- `inst/cohorts/*.json` — circe cohort expressions
-- `CreateStrategusAnalysisSpecification.R` — builds the analysis spec
-- `StrategusCodeToRun.R` — runs it against the CDM
-- `config.R` / `study_params.yaml` — optional and minimal; most studies need neither
+If a package is already in the workspace lockfile, do not add it to a study's.
+If a study needs a new reusable package, add it at the workspace level first
+(a PR here with `renv::install()` + `renv::snapshot()` run from the workspace
+root).
 
-**[`synthea-omop-template`](https://github.com/Duke-Vascular-Informatics/synthea-omop-template) (for synthetic-data generation and `-synth` repos)** —
-imperative R + numbered workflow steps:
+## Rules you must follow
 
-- `study_params.yaml` — study identity, cohort definitions, concept IDs, analysis flags
-- `config.R` — reads `study_params.yaml` and merges with infrastructure defaults (do not edit directly)
-- `cohorts/` — SQL cohort definitions (target, comparator, outcome)
-- `covariates/` — covariate concept lists
-- `R/` — analysis pipeline scripts
-- `workflow/` — ordered execution steps (Steps 1–6 are also what a `-synth` repo keeps)
-- `synthea/` — Synthea synthetic data generation and ETL
+These are enforced for AI assistants by `CLAUDE.md` and apply equally to
+humans. Read `CLAUDE.md` in full before your first change.
 
-Either way, the manuscript report is a **separate sibling repo** built from
-[`omop-report-template`](https://github.com/Duke-Vascular-Informatics/omop-report-template) —
-see the Multi-Repo Analysis Pipeline section above. It is not part of either
-template above.
-
-```
-charon/                               ← you are here (infrastructure)
-├── <study>/                        ← analysis-core repo (plugs in here)
-│   ├── inst/cohorts/  or  cohorts/ ← depending on template
-│   ├── R/
-│   └── output/                     ← result artifacts <study>-report reads
-└── <study>-report/                  ← report repo (sibling, not nested)
-    ├── GenerateReport.R
-    └── R/
-```
-
----
+1. **Rule 1 — Concept-ID transparency.** Never write a concept ID into code,
+   SQL or a CSV until you have checked, *in order*: (1a) the OHDSI Phenotype
+   Library, (1b) your lab's label-prefixed ATLAS cohorts/concept sets
+   (authoritative — a local definition should converge to them), (2) the
+   local `phenotype_library/catalog.yaml`, and only then (3) a live vocabulary
+   query. Label every ID `[vocab query]` or `[pretraining]`; only the former
+   may be committed. Concept IDs recalled from memory — including by an AI —
+   have been wrong in this vocabulary build. After a Tier-3 lookup, add the
+   result to the catalog so the next study skips it.
+2. **Rule 2 — Package priority.** HADES packages first, tidyverse second,
+   anything else only from the project's CRAN mirror. No `dbplyr`, `odbc`, or
+   direct `DBI` — use `DatabaseConnector` and `SqlRender`.
+3. **Rule 3 — Verbose comments, OHDSI style.** File headers, section banners,
+   and a trailing comment on every hard-coded concept ID naming the concept
+   and its provenance label.
+4. **Branching.** Work on a personal branch named after your GitHub username;
+   open PRs into `main`; squash-merge only. Never push to `main` or to
+   someone else's branch.
+5. **No PHI, no secrets.** Output only aggregate statistics. Never commit
+   `.env`, `omop_vocab/`, or anything from a secure environment.
+6. **OSF stays private.** Protocol projects on OSF are created private and are
+   made public only by a person, manually, after team approval.
 
 ## Prerequisites
 
-Complete in this order — each item is a prerequisite for the next:
+You need accounts and software before the first-time setup:
 
-| # | What | Install / register |
-|---|------|--------------------|
-| 1 | **GitHub account** | [github.com](https://github.com) — free |
-| 2 | **Git** | [git-scm.com/downloads](https://git-scm.com/downloads) |
-| 3 | **Docker Desktop** (v4.x+) | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) |
-| 4 | **VS Code** + Dev Containers extension | [code.visualstudio.com](https://code.visualstudio.com/) — then install `ms-vscode-remote.remote-containers` |
+| What | Why |
+|---|---|
+| GitHub account | Hosts the repos; its username becomes your branch name |
+| Git | Version control |
+| Docker Desktop 4.x+ | Runs SQL Server and the dev container |
+| The R, Java and Python versions of your secure analytics environment | The container must be built to match them (Step 6.0 of Getting Started) |
+| VS Code + the *Dev Containers* extension | Opens the workspace inside the container |
+| Athena account (free, athena.ohdsi.org) | Downloads the OMOP vocabulary |
+| UMLS account (free, optional) | Only needed to rebuild CPT-4 codes |
 
-> **AI coding assistant (Claude Code):** installs automatically inside the dev container.
+Hardware: about **35 GB** of disk in use (vocabulary CSVs, loaded database,
+image, R packages), with Docker's virtual-disk limit set to **60–80 GB** for
+build-cache headroom; **16 GB RAM** for Docker (12 GB minimum — the vocabulary
+load is killed silently below that). The Claude Code assistant installs itself
+inside the container; you supply an Anthropic API key in `.env`.
 
-Additional requirements:
-- ~80 GB free disk space (SQL Server + OMOP vocabulary + R packages + Docker build cache)
-- 16 GB RAM recommended (set in Docker Desktop → Settings → Resources → Advanced)
+## Where to go next
 
----
+Follow these in order:
 
-## Recommended Workflow (Workspace-First)
-
-> **New? Follow [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) in order.** Do not run any command below until all prerequisites are installed.
-
-Use this workflow for all new studies:
-
-1. Create a GitHub account and Personal Access Token
-2. Install Git, Docker Desktop, and VS Code (with Dev Containers extension and AI assistant)
-3. Use this template (or clone it) to create your own workspace repo
-4. Configure `.env` (SQL password + GitHub token)
-5. Open in the VS Code dev container
-6. Download and load the OMOP vocabulary (one-time per machine)
-7. Clone your study repo as a subfolder and run study-specific workflows
-
-Example layout:
-
-```
-my-omop-dev-workspace/
-    .env
-    docker-compose.yml
-    omop_vocab/
-    synthea-omop-template/        # Template/reference repo
-    my-study-a/              # Project repo
-    my-study-b/              # Project repo
-```
-
----
-
-## Getting Started
-
-**For full step-by-step instructions, follow [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).**
-
-It covers everything from GitHub account creation through vocabulary load and study execution, with plain-language explanations for each step. The summary below is for returning users who already have the workspace set up.
-
-| Phase | Steps | Detail |
+| Step | Read | You will |
 |---|---|---|
-| **First-time machine setup** | GitHub account → Git → Docker Desktop → VS Code → clone → `.env` → open container | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) Steps 1–7 |
-| **Vocabulary (one-time per machine)** | Download from Athena → load into SQL Server | Steps 8–9 |
-| **Each new study** | Create study repo → define cohort/covariates → ETL → analysis → bundle | Steps 10–11 |
+| 1 | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Install tools, build the container, load the vocabulary, create your first study repos |
+| 2 | [`docs/ANALYST_PLAYBOOK.md`](docs/ANALYST_PLAYBOOK.md) | Learn the day-to-day loop and where to look when something breaks |
+| 3 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | Keep as the command cheat sheet |
+| 4 | [`phenotype_library/README.md`](phenotype_library/README.md) | Learn the concept lookup workflow before defining cohorts |
+| 5 | The README of the template for the repo you are creating | Learn that template's own steps |
 
----
+Other references: [`docs/SETUP.md`](docs/SETUP.md) (infrastructure details),
+[`docs/GIT_GITHUB_AUTH.md`](docs/GIT_GITHUB_AUTH.md) (SSH/token auth),
+[`synthetic_data/README.md`](synthetic_data/README.md) (reusing synthetic
+datasets), [`docs/MAINTAINER_PLAYBOOK.md`](docs/MAINTAINER_PLAYBOOK.md)
+(governance, if you maintain the workspace).
 
-## Working with Multiple Study Repositories
+## Using charon for your own lab
 
-- Keep each study as its own git repository under the workspace root.
-- Treat this repository as infrastructure orchestration, not a study code repo.
-- Add independent study repos to this workspace repo's `.gitignore` when needed.
-- Run commands from the target study folder, while reusing the same shared SQL Server and vocabulary.
-- **Two-level renv architecture — do not duplicate packages across levels:**
+Click **Use this template** (or clone), then replace the placeholder instance
+data — every file already exists under its real name with one illustrative
+entry and inline schema comments:
 
-  | Level | File | What belongs here |
-  |---|---|---|
-  | **Workspace** (`renv.lock`, this repo's root) | Source of truth for all shared packages | HADES analysis stack (CohortMethod, CohortDiagnostics, CohortGenerator, EmpiricalCalibration, PatientLevelPrediction, FeatureExtraction, ResultModelManager, etc.), tidyverse, reporting deps (flextable, officer, ragg, osfr), database/ETL infrastructure (DatabaseConnector, SqlRender, Achilles, DataQualityDashboard, ETLSyntheaBuilder), and all their transitive dependencies |
-  | **Study repo** (`<study>/renv.lock`) | Study-specific additions only | Packages genuinely not present in the workspace lockfile that are required by that study's analysis code. Should be a small delta — most studies add nothing. |
+- `studies.yaml` — your study/report/synth/ETL repo registry
+- `contributors.yaml` — your contributors (regenerate `CONTRIBUTORS.md` with `Rscript scripts/sync_contributors.R`)
+- `phenotype_library/catalog.yaml` — your verified concept sets
+- `osf/osf_projects.csv`, `osf/osf_files.csv` — your OSF protocol registry
+- `synthetic_data/registry.yaml` — your synthetic dataset registry
+- `WORKSPACE_ROSTER.md` — your repo layout and repo-specific rules
+- `CITATION.cff` — your authors and repo URL
 
-  If a package is already in the workspace `renv.lock`, **do not add it to a study repo's lockfile**.
+Everything else — `scripts/`, the lookup scripts, the four template
+submodules, the dev container, and the generic rules in `CLAUDE.md` — is
+infrastructure; keep it as is.
 
-  When a study genuinely needs a new package:
-  1. Add it at the **workspace level** first: open a PR against this repo with `renv::install()` + `renv::snapshot()` run from the workspace root.
-  2. If it is truly study-specific (not reusable), add it to the study lockfile and note the rationale in the PR description.
+### Staying in sync with charon
 
-## AI Assistant Instructions (Shared)
+To keep receiving infrastructure fixes after you diverge, add this repo as a
+second remote and use the sync scripts. No shared git history is required:
 
-Shared assistant guidance for all study subfolders is centralized at workspace root:
+```bash
+git remote add charon https://github.com/Duke-Vascular-Informatics/charon.git
+scripts/pull_charon_updates.sh                  # bring charon's infra fixes into your workspace
+scripts/push_charon_updates.sh -m "<message>"   # contribute a fix back upstream
+```
 
-- `CLAUDE.md`
-- `.github/copilot-instructions.md`
-- `.github/instructions/omop-ohdsi.instructions.md`
-- `.github/instructions/r-packages.instructions.md`
-
-Keep only analysis-specific overrides in each study subfolder.
-
----
-
-## Adding a New Study
-
-1. Clone an analysis-core study repo — created from `strategus-study-template`
-   for a new study, or `synthea-omop-template` only if it needs the numbered
-   `workflow/01–09` scaffold — into this workspace folder
-2. Clone a matching `<study>-report` repo, created from `omop-report-template`,
-   as a sibling of it — every study gets one, even a purely descriptive study
-   with no risk score (see Multi-Repo Analysis Pipeline above)
-3. Add both to `.gitignore` if they should remain independent from this workspace repo
-4. Open the workspace in the dev container — SQL Server is already running and shared
-5. If a repo adds packages beyond the workspace `renv.lock`, run `renv::snapshot()` inside that repo's folder, then copy the lockfile to the workspace root
-6. Register both repos in `studies.yaml`
-
----
-
-## macOS / Apple Silicon Notes
-
-The SQL Server image (`mcr.microsoft.com/azure-sql-edge`) provides native ARM64 support for Apple Silicon Macs. The dev container handles all Docker and SQL Server setup automatically — see [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) for the full setup sequence.
-
----
-
-## Contributing
-
-See [`docs/MAINTAINER_PLAYBOOK.md`](docs/MAINTAINER_PLAYBOOK.md) for the
-governance process, and `scripts/push_charon_updates.sh` if you're
-contributing an infra fix back from a workspace built on this template.
+Both read `scripts/charon_manifest.txt` for the shared paths. Your lab's own
+data (`studies.yaml`, `contributors.yaml`, the catalog, the roster, the OSF
+registries) is excluded and never touched. Contributing guidelines are in
+[`docs/MAINTAINER_PLAYBOOK.md`](docs/MAINTAINER_PLAYBOOK.md).
 
 ---
 

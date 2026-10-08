@@ -63,29 +63,42 @@ Shared workspace infrastructure (across all studies):
 - `synthetic_data/registry.yaml` — catalog of reusable disease/procedure/outcome-specific synthetic OMOP CDM datasets. **Check here before running a new Synthea generation from scratch.** See `synthetic_data/README.md` for the three reuse tiers (same-machine, cross-machine regenerate, cross-machine download). Vocabulary tables are never redistributed through this mechanism — see `docs/SETUP.md` Step 7.
 - `synthetic_data/scripts/lookup_dataset.R` — search the synthetic dataset registry
 
-Study-specific content lives in:
-- `config.R` — all settings (schemas, cohort IDs, SQL paths, study dates, output folder)
-- `cohorts/` — SQL cohort definitions (target, comparator, outcome)
-- `covariates/` — all patient features: `covariates.csv` (one row per feature, add `points` column for integer risk scores), `covariate_concepts.csv` (OMOP concept IDs), and optionally `risk_lookup.csv` (score → probability table for integer score studies). Do **not** create a separate `risk_score/` directory.
-- `workflow/02` — study design declaration and artifact validation
-- `workflow/07` — analysis package list
-- `workflow/08` — analysis code (Sections 7–9)
+Study-specific content lives in the study repos, each created from one template.
+**Know which kind of repo you are in before suggesting any change:**
+
+| Repo | Template | What it is for |
+|---|---|---|
+| `<study>` (analysis-core) | `strategus-study-template` | **All analysis.** circe cohort JSON in `inst/cohorts/`, `CreateStrategusAnalysisSpecification.R`, `StrategusCodeToRun.R`, the extract layer. Follow its `CHECKLIST.md` and `docs/STRATEGUS_CONVENTIONS.md`. |
+| `<study>-report` | `omop-report-template` | The manuscript only. Renders from result artifacts; **never connects to a database.** |
+| `<study>-synth` | `synthea-omop-template` | **Analysis-specific synthetic data generation only** (Synthea module → ETL → QC, `workflow/01–06`). It contains no analysis; analysis belongs in the Strategus repo. |
+
+`synthea-omop-template` is not an analysis template. Do not add analysis code,
+report code or bundle-packaging to a `-synth` repo.
+
+Inside a **`-synth` repo**:
+- `config.R` — settings (schemas, cohort IDs, SQL paths, output folder)
+- `synthea/modules/` — the Synthea disease/procedure module (the main thing you edit)
+- `cohorts/`, `covariates/` — SQL and CSV definitions, filled in **only as far as needed to validate the generated data**
+- `workflow/02` — declares those definitions and validates them
+- `study_params.yaml` — generation parameters (population, age range, seed) and schema names
 
 Infrastructure is pre-wired and should not be modified:
 - `R/drivers.R`, `R/connection.R`, `R/cohorts.R` — database and cohort helpers
 - `setup/`, `.devcontainer/` — renv and Docker environment
-- `workflow/01`, `03–06`, `09` — ETL, QC, and packaging steps
+- `workflow/01`, `03–06` — setup, Synthea generation, ETL and QC steps
 
-**Always read `config.R` first** to understand the current study's schema names, cohort IDs,
-and file paths before suggesting any code.
+In a `-synth` repo, **read `config.R` first** to understand the schema names, cohort IDs
+and file paths before suggesting any code. In a Strategus repo, read its `CLAUDE.md`,
+`CHECKLIST.md` and `inst/Cohorts.csv` instead.
 
 ---
 
 ## Language and Runtime
 
 - All analysis code is written in **R**. Do not suggest Python, Julia, or any other language.
-- R version: **4.5.x**. Do not use syntax or packages unavailable in R 4.5.
-- Java 17 (Eclipse Adoptium) is required for `DatabaseConnector` / `rJava`.
+- **R, Java and Python versions are set per workspace**, to match the lab's secure analytics environment, via `R_VERSION`, `JAVA_VERSION` and `PYTHON_VERSION` in `.env` (defaults in `.devcontainer/Dockerfile`: R 4.5.2, Java 17, Python 3.12). Check `R --version`, `java -version` and `renv.lock`'s `R$Version` for the actual targets, and do not use syntax or packages unavailable in that R version.
+- A JDK matching `JAVA_VERSION` is required for `DatabaseConnector` / `rJava`; `JAVA_HOME` is set by the dev container.
+- Do not change these versions on your own initiative: they must mirror the secure environment. If asked to change them, follow `docs/GETTING_STARTED.md` Step 6.0 (including reconciling `renv.lock`).
 
 ---
 
@@ -237,20 +250,19 @@ When selecting packages for any analysis task, apply this strict priority order:
    wrangling, visualization, string manipulation, I/O), prefer tidyverse packages: `dplyr`,
    `tidyr`, `ggplot2`, `readr`, `purrr`, `stringr`, `lubridate`, `forcats`.
 
-3. **Project CRAN mirror only — scoped to packages required by Step 8.** Any package
-   listed in the `required` vector of `workflow/07_setup_analysis_env.R` (the packages
-   Step 7 validates before the Step 8 analysis run) must be available on the project
-   CRAN mirror (configured via `CRAN_MIRROR` in `.env`; defaults to
-   `https://cloud.r-project.org`). Do not suggest a GitHub-only, Bioconductor, or other
-   non-CRAN source for one of these packages unless it is an OHDSI HADES package
-   pre-built in `internal_repo/bin/`.
+3. **Project CRAN mirror only — scoped to packages a study loads at run time.** Any
+   package in an analysis-core repo's `renv.lock` (the Strategus analysis) or a report
+   repo's `renv.lock` must be available on the project CRAN mirror (configured via
+   `CRAN_MIRROR` in `.env`; defaults to `https://cloud.r-project.org`). Do not suggest a
+   GitHub-only, Bioconductor, or other non-CRAN source for one of these packages unless
+   it is an OHDSI HADES package pinned in that repo's lockfile.
 
    Packages used only for code development, concept lookup, or testing — and never
-   loaded by `workflow/08` — are exempt from this gate and may be installed from
-   GitHub (e.g. `PhenotypeLibrary`, used by `phenotype_library/scripts/check_pl.R` for
-   Rule 1 Tier 1 lookups). Install via `renv::install("OHDSI/<pkg>@<commit-sha>")`
-   (pin to a commit, not a branch) and run `renv::snapshot()` afterward, same as any
-   other package addition.
+   loaded by a study's analysis or report code — are exempt from this gate and may be
+   installed from GitHub (e.g. `PhenotypeLibrary`, used by
+   `phenotype_library/scripts/check_pl.R` for Rule 1 Tier 1 lookups). Install via
+   `renv::install("OHDSI/<pkg>@<commit-sha>")` (pin to a commit, not a branch) and run
+   `renv::snapshot()` afterward, same as any other package addition.
 
 4. **Never suggest** `dbplyr`, `odbc`, `DBI` directly, or any Python/Julia dependency.
 
@@ -299,7 +311,7 @@ GitHub repositories (e.g., HADES package source code, Book of OHDSI example scri
 - **File header**: every R script opens with a block comment identifying purpose, inputs,
   outputs, and any important assumptions or prerequisites.
 - **Section headers**: use `# ============` banners for major sections (matching the
-  numbered sections in `workflow/08_run_analysis_and_manuscript_report.R`).
+  sections of the script's own header, e.g. the numbered steps in a `workflow/` script).
 - **Function-level**: document what each function does, its parameters, return value, and
   side effects before the function definition.
 - **Non-obvious logic**: comment every non-trivial SQL join, window function, or
@@ -322,12 +334,19 @@ GitHub repositories (e.g., HADES package source code, Book of OHDSI example scri
 
 ## Architecture
 
+**`-synth` repos (`synthea-omop-template`):**
 - `config.R` — single source of truth; always read via `get_validation_config()`.
 - `R/cohorts.R` — `build_cohorts()` reads SQL file paths from `config$target_cohort_sql`,
   `config$comparator_cohort_sql`, `config$outcome_cohort_sql`. Do not hardcode paths.
-- `workflow/08` is fully driven by `analyses:` flags in `study_params.yaml` — no code
-  editing is needed. Enable analyses by setting their flags to `true`.
 - All outputs go to `config$output_folder`. Do not hardcode output paths.
+
+**Analysis-core repos (`strategus-study-template`):** cohorts are circe JSON, the
+analysis is the Strategus specification, and the repo's own `docs/STRATEGUS_CONVENTIONS.md`
+lists workarounds that must not be reverted. Result artifacts go to its `output/`, which
+the report repo reads.
+
+**Report repos (`omop-report-template`):** no database access of any kind. A query a
+report needs belongs in the analysis-core repo's `R/extract_report_inputs.R`.
 
 ---
 
@@ -344,22 +363,27 @@ GitHub repositories (e.g., HADES package source code, Book of OHDSI example scri
 
 ## Template Customization Assistance
 
-### Automated pre-flight check
+### Strategus analysis-core and report repos
 
-The fastest way to assess setup status is to run the dedicated check script:
+Work through the repo's own `CHECKLIST.md` (Path A for a new repo). It is the source of
+truth for that template; do not substitute the `-synth` checks below.
 
-**Terminal:**
+### `-synth` repos: automated pre-flight check
+
+`scripts/check_setup.R` ships in `synthea-omop-template` (not in the workspace root), so
+run it from inside the `-synth` repo:
+
 ```bash
 Rscript scripts/check_setup.R
 ```
 
-This script scans `study_params.yaml`, cohort SQL files, and covariate CSVs without a database
+It scans `study_params.yaml`, cohort SQL files, and covariate CSVs without a database
 connection and prints a sectioned [OK] / [WARN] / [FAIL] checklist. Exit code 0 = ready
-for Step 8; exit code 1 = items require attention.
+to generate data; exit code 1 = items require attention.
 
 **Note:** Claude Code users can also use `/check-setup` skill if available.
 
-### Manual checklist (when assisting interactively)
+### `-synth` repos: manual checklist (when assisting interactively)
 
 When a user asks for setup help and hasn't run the script, perform these checks inline:
 
@@ -372,8 +396,8 @@ When a user asks for setup help and hasn't run the script, perform these checks 
 3. Check `covariates/covariates.csv` for placeholder rows (`covariate_id` matching
    `covariate_1`, `covariate_2`, etc.).
 4. Check `covariates/covariate_concepts.csv` for `concept_id = 0` rows.
-5. Check the `analyses:` flags — confirm at least one is set to `true`.
-6. Summarize what is complete and what still needs filling in before running Step 8,
+5. Confirm the generation parameters (population, age range, seed) are set.
+6. Summarize what is complete and what still needs filling in before generating data,
    using the same [OK] / [WARN] / [FAIL] format as `scripts/check_setup.R`.
 
 ---

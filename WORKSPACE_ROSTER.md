@@ -46,3 +46,17 @@ PR to merge into `main`. See `CLAUDE.md`'s "Branch strategy" section.
   note any such repo-specific requirement here (see `CLAUDE.md`'s OSF
   Protocol Hosting section for the general public-release rule this adds
   to).
+
+## Secure-environment toolchain
+
+The dev container must use the R, Java and Python versions of your secure
+analytics environment (set `R_VERSION`, `JAVA_VERSION`, `PYTHON_VERSION` in
+`.env`; see `docs/GETTING_STARTED.md` Step 6.0). Record the targets here so
+every collaborator builds the same environment.
+
+| Tool | Version in our secure environment | Source / confirmed by |
+|------|-----------------------------------|-----------------------|
+| R | *(e.g. 4.5.2)* | *(e.g. HPC admin, date)* |
+| Java (JDK) | *(e.g. 17)* | |
+| Python | *(e.g. 3.12; scikit-learn, numpy versions)* | |
+| R package source | *(e.g. internal mirror / snapshot date)* | |

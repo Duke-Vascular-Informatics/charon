@@ -93,26 +93,14 @@ cohort_end_date       DATE    -- observation end or censoring date
 > suggest hardcoded values for anything that lives in `config.R` or `study_params.yaml`.
 
 - **`config.R` is the single source of truth.** Always read configuration via `get_validation_config()`. Never hardcode schema names, cohort IDs, SQL paths, or output directories.
-- **`workflow/02_define_omop_cohort_outcome_covariates.R`** — study design declaration: cohort SQL, covariate definitions, model reference. Customize here for study-specific changes.
-- **`workflow/07_setup_analysis_env.R`** — analysis package list. Add or remove packages here; the script validates all are installed before Step 8.
-- **`workflow/08` is entirely flag-driven.** Enable or disable analyses by setting flags in the `analyses:` block of `study_params.yaml`. No code editing is needed for standard analyses:
-  ```yaml
-  analyses:
-    cohort_characterization: false
-    prognostic_model:         false
-    causal_inference:         false
-    integer_risk_score:       true
-    plp_model_validation:     false
-    word_report:              true
-  ```
+- **Know the repo type.** `synthea-omop-template` (`-synth` repos) is for analysis-specific *synthetic data generation only* (`workflow/01–06`); the analysis lives in a `strategus-study-template` repo and the manuscript in an `omop-report-template` repo. Do not add analysis or report code to a `-synth` repo.
+- **`workflow/02_define_omop_cohort_outcome_covariates.R`** (`-synth` repos) — declares and validates the cohort SQL and covariate definitions used to check the generated data. Fill these in only as far as validation needs.
 - **Use `build_cohorts()` from `R/cohorts.R`** to instantiate cohorts from SQL files. Cohort SQL paths are read from `config$target_cohort_sql`, `config$comparator_cohort_sql`, `config$outcome_cohort_sql`. Do not hardcode paths.
-- **All outputs go to `config$output_folder`.** Do not hardcode output paths anywhere in analysis code.
+- **All outputs go to `config$output_folder`.** Do not hardcode output paths anywhere in code.
 - **Protected infrastructure** — do not modify: `R/drivers.R`, `R/connection.R`, `R/cohorts.R`, `setup/`, `.devcontainer/`, `workflow/01`, `workflow/03`–`06`.
 - **Covariates directory layout** — all patient features live under `covariates/`:
-  - `covariates/covariates.csv` — one row per feature; add a `points` column for integer risk score studies.
+  - `covariates/covariates.csv` — one row per feature.
   - `covariates/covariate_concepts.csv` — OMOP concept IDs for each feature.
-  - `covariates/risk_lookup.csv` — optional; maps integer score totals to predicted probabilities (integer risk score studies only).
-  - **Do not create a separate `risk_score/` directory.** All covariates and risk score inputs belong in `covariates/`.
 
 ---
 

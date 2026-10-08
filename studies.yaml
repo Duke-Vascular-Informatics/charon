@@ -2,8 +2,9 @@
 # studies.yaml — Workspace Study Registry starter
 #
 # Central index of all observational studies in your OMOP dev workspace.
-# Maintained automatically: workflow/02 appends a new entry when a study
-# passes artifact validation for the first time.
+# Maintained automatically for -synth repos: workflow/02 appends a new entry when
+# the repo passes artifact validation for the first time. Analysis-core and report
+# repos are registered by hand.
 #
 # Read by:
 #   - /sync-repos  — derives the ordered repo list for commit/push/merge
@@ -11,7 +12,7 @@
 #   - /check-alignment (no arg) — checks all studies against the template
 #
 # To manually register a study that pre-dates this registry, append an entry
-# following the format below, then run workflow/02 in that study repo to
+# following the format below, then (for a -synth repo) run workflow/02 to
 # confirm the fields are correct.
 # =============================================================================
 
@@ -55,7 +56,9 @@
 # migration: fields
 # -----------------
 #   framework  strategus | synthea-omop-template | n/a
-#              Which scaffold the analysis runs on.
+#              Which scaffold the repo is built on. Analysis-core repos are
+#              always strategus; synthea-omop-template is for -synth
+#              (data-generation-only) repos.
 #   report     none | artifact-driven | extracted | db-coupled | inherited-unused | n/a
 #              artifact-driven = renders with no database connection but the
 #                                report code still lives IN this repo.
@@ -111,7 +114,7 @@ templates:
     type: submodule
     pipeline_role: template
     status: current
-    description: "Legacy numbered-workflow template (Steps 1-9) — still current for -synth repos."
+    description: "Analysis-specific synthetic data generation (workflow Steps 1-6) — the template for -synth repos. No analysis."
     registered: 2026-01-01
 
   - template_name: omop-etl-template
@@ -175,7 +178,7 @@ studies:
     study_design: descriptive   # descriptive | prognostic | causal-inference
     pipeline_role: analysis-core
     migration:
-      framework: strategus       # or synthea-omop-template
+      framework: strategus       # analysis-core repos are always strategus
       report: none
       deploy: none
       todo: []
