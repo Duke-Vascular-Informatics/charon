@@ -84,7 +84,7 @@ cohort_end_date       DATE    -- observation end or censoring date
 ```
 
 - IDs are defined in `config.R` — never hardcode `cohort_definition_id = 1` in analysis code.
-- Use `build_cohorts()` from `R/cohorts.R` to populate the cohort table from SQL files.
+- This repo does not instantiate cohorts. Strategus does, in the analysis-core repo; the consuming studies' cohorts (`consumers.yaml`) are used only to QC the synthetic dataset.
 
 ## Architecture Conventions
 
@@ -95,9 +95,9 @@ cohort_end_date       DATE    -- observation end or censoring date
 - **`config.R` is the single source of truth.** Always read configuration via `get_validation_config()`. Never hardcode schema names, cohort IDs, SQL paths, or output directories.
 - **Know the repo type.** `synthea-omop-template` (`-synth` repos) is for analysis-specific *synthetic data generation only* (`workflow/01–06`); the analysis lives in a `strategus-study-template` repo and the manuscript in an `omop-report-template` repo. Do not add analysis or report code to a `-synth` repo.
 - **`workflow/02_define_omop_cohort_outcome_covariates.R`** (`-synth` repos) — declares and validates the cohort SQL and covariate definitions used to check the generated data. Fill these in only as far as validation needs.
-- **Use `build_cohorts()` from `R/cohorts.R`** to instantiate cohorts from SQL files. Cohort SQL paths are read from `config$target_cohort_sql`, `config$comparator_cohort_sql`, `config$outcome_cohort_sql`. Do not hardcode paths.
+- **Cohorts are not instantiated in a `-synth` repo.** Strategus instantiates them in the analysis-core repo. `consumers.yaml` lists the Strategus studies that use the dataset; `workflow/03` checks the Synthea module can produce their cohorts and `workflow/06` checks the final data.
 - **All outputs go to `config$output_folder`.** Do not hardcode output paths anywhere in code.
-- **Protected infrastructure** — do not modify: `R/drivers.R`, `R/connection.R`, `R/cohorts.R`, `setup/`, `.devcontainer/`, `workflow/01`, `workflow/03`–`06`.
+- **Protected infrastructure** — do not modify: `R/drivers.R`, `R/connection.R`, `setup/`, `.devcontainer/`, `workflow/01`, `workflow/03`–`06`.
 - **Covariates directory layout** — all patient features live under `covariates/`:
   - `covariates/covariates.csv` — one row per feature.
   - `covariates/covariate_concepts.csv` — OMOP concept IDs for each feature.

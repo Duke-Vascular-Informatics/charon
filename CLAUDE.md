@@ -79,11 +79,13 @@ Inside a **`-synth` repo**:
 - `config.R` — settings (schemas, cohort IDs, SQL paths, output folder)
 - `synthea/modules/` — the Synthea disease/procedure module (the main thing you edit)
 - `cohorts/`, `covariates/` — SQL and CSV definitions, filled in **only as far as needed to validate the generated data**
-- `workflow/02` — declares those definitions and validates them
+- `workflow/02` — declares those definitions and validates them, and lists the cohorts of every study in `consumers.yaml`
+- `consumers.yaml` — the Strategus studies that use this dataset; their cohorts are what the module and the final data are checked against
 - `study_params.yaml` — generation parameters (population, age range, seed) and schema names
 
 Infrastructure is pre-wired and should not be modified:
-- `R/drivers.R`, `R/connection.R`, `R/cohorts.R` — database and cohort helpers
+- `R/drivers.R`, `R/connection.R` — database helpers
+- `R/consumer_qc.R`, `R/module_coverage.R` — consuming-study QC and module-coverage checks
 - `setup/`, `.devcontainer/` — renv and Docker environment
 - `workflow/01`, `03–06` — setup, Synthea generation, ETL and QC steps
 
@@ -336,8 +338,11 @@ GitHub repositories (e.g., HADES package source code, Book of OHDSI example scri
 
 **`-synth` repos (`synthea-omop-template`):**
 - `config.R` — single source of truth; always read via `get_validation_config()`.
-- `R/cohorts.R` — `build_cohorts()` reads SQL file paths from `config$target_cohort_sql`,
-  `config$comparator_cohort_sql`, `config$outcome_cohort_sql`. Do not hardcode paths.
+- This repo does not instantiate cohorts (the old `R/cohorts.R` was removed). Cohorts are
+  instantiated by Strategus in the analysis-core repo; `consumers.yaml` lists the Strategus
+  studies that use the dataset, and their cohorts drive three checks: `workflow/02` lists
+  them, `workflow/03` checks the Synthea module (custom + built-in) can produce them
+  (`--enforce_coverage=true` to stop on a gap), and `workflow/06` checks the final data.
 - All outputs go to `config$output_folder`. Do not hardcode output paths.
 
 **Analysis-core repos (`strategus-study-template`):** cohorts are circe JSON, the
