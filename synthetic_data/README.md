@@ -85,8 +85,25 @@ before condition/drug/procedure names resolve — the download never includes vo
    `drug_era_rows`) rather than inventing a separate stats step.
 3. Record the schema name in your own (gitignored) `local_schemas.yaml` so same-machine
    reuse is documented instead of tribal knowledge.
-4. Optionally publish a download export (see below) so others don't need to
+4. List every consuming Strategus study in the `-synth` repo's `consumers.yaml` and in
+   this entry's `used_by` (and `consumes_dataset` in `studies.yaml`). They must agree;
+   see "Protecting consumers when you change a dataset" below.
+5. Optionally publish a download export (see below) so others don't need to
    regenerate from scratch.
+
+## Protecting consumers when you change a dataset
+
+A `-synth` repo tracks the Strategus studies that use its dataset in `consumers.yaml`.
+Its `workflow/06` (also `scripts/consumer_cohort_qc.R`) renders each consumer's cohorts
+from their circe JSON, as Strategus does, instantiates them against the synthetic CDM,
+and checks subject counts per role: target, outcome people who are also in the target,
+and each covariate cohort (in Strategus, every cohort that is neither target nor outcome).
+Run it with `--enforce_thresholds=true` **before** regenerating or editing a dataset that
+has consumers, so you find a broken link in the `-synth` repo instead of in the study.
+
+It checks that cohorts are populated at the subject level; it does not re-run time-at-risk
+windows. The consumers are siblings of the `-synth` repo in the workspace, so clone each
+one before running it.
 
 ## Extending a dataset across analytic use cases — use `versions:`
 
@@ -129,7 +146,9 @@ change.
    `target_cdm_schema_base`.
 2. Add a `versions:` block with its own `qc_summary`. Leave existing blocks alone.
 3. Migrate consumers **one at a time**: rebuild that consumer's overlay against
-   the new schema, then re-check its cohort counts before considering it migrated.
+   the new schema, then re-check its cohort counts before considering it migrated
+   (`Rscript scripts/consumer_cohort_qc.R --enforce_thresholds=true --cdm_schema=<new schema>`
+   in the `-synth` repo does this check for every listed consumer).
 
 `lookup_dataset.R` reads both shapes and prints which consumers are pinned to
 each version, plus a warning when a dataset is unversioned and therefore mutated

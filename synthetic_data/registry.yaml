@@ -41,6 +41,13 @@
 # `studies.yaml` carries the matching `produces_dataset`/`consumes_dataset`
 # fields — the two files must agree.
 #
+# The producing -synth repo also tracks its consumers in its own
+# `consumers.yaml` (dataset_id + the Strategus studies that use the dataset).
+# Its workflow/06 instantiates each listed study's cohorts against the synthetic
+# CDM and fails a cohort that is empty or too small, so a regenerated dataset
+# cannot silently break a study. `used_by` below and that `consumers.yaml` must
+# list the same studies; QC warns when they disagree.
+#
 # Two per-entry fields make the producer status explicit:
 #
 #   producer_role         synth  — produced by a dedicated -synth repo (target)
