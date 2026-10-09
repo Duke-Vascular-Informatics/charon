@@ -101,6 +101,13 @@ and each covariate cohort (in Strategus, every cohort that is neither target nor
 Run it with `--enforce_thresholds=true` **before** regenerating or editing a dataset that
 has consumers, so you find a broken link in the `-synth` repo instead of in the study.
 
+Per-consumer options in `consumers.yaml`: `expected_empty` (cohort ids the study knows are empty on
+synthetic data, e.g. an outcome Synthea cannot generate, reported instead of failed); `not_checked`
+(studies in `used_by` that are deliberately not QC'd, such as retired or non-Strategus ones); and
+`discharge_disposition_check: true` for a study whose analysis depends on discharge disposition, which
+also verifies the dataset has discharge dispositions loaded, mapped, and both home and non-home (the
+cohort check cannot see this: such a cohort is hand-authored SQL that Strategus never runs).
+
 It checks that cohorts are populated at the subject level; it does not re-run time-at-risk
 windows. The consumers are siblings of the `-synth` repo in the workspace, so clone each
 one before running it.

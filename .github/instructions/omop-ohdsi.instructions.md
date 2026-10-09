@@ -172,6 +172,7 @@ WHERE ca.ancestor_concept_id = <your_chosen_ancestor_id>
 Use the standalone R script to run vocabulary lookups interactively from terminal:
 
 ```bash
+# scripts/concept_lookup.R ships in synthea-omop-template: run it from inside a -synth repo (or `cd synthea-omop-template`)
 Rscript scripts/concept_lookup.R "<clinical term>" [domain]
 ```
 
