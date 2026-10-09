@@ -110,7 +110,7 @@ templates:
 
   - template_name: synthea-omop-template
     dir: synthea-omop-template
-    github: my-org/synthea-omop-template
+    github: Duke-Vascular-Informatics/synthea-omop-template
     type: submodule
     pipeline_role: template
     status: current
@@ -119,7 +119,7 @@ templates:
 
   - template_name: omop-etl-template
     dir: omop-etl-template
-    github: my-org/omop-etl-template
+    github: Duke-Vascular-Informatics/omop-etl-template
     type: submodule
     pipeline_role: template
     status: current
@@ -128,7 +128,7 @@ templates:
 
   - template_name: strategus-study-template
     dir: strategus-study-template
-    github: my-org/strategus-study-template
+    github: Duke-Vascular-Informatics/strategus-study-template
     type: submodule
     pipeline_role: template
     status: current
@@ -137,7 +137,7 @@ templates:
 
   - template_name: omop-report-template
     dir: omop-report-template
-    github: my-org/omop-report-template
+    github: Duke-Vascular-Informatics/omop-report-template
     type: submodule
     pipeline_role: template
     status: current
