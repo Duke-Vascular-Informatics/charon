@@ -5,7 +5,8 @@ title: "Charon"
 abstract: >
   Containerized HADES Analytics for Research in OHDSI Networks — a reusable
   scaffold for OMOP CDM observational studies. Provides containerised
-  infrastructure (SQL Server, R 4.5, Java 17, OHDSI HADES), a shared
+  infrastructure (SQL Server, R, Java and Python at the versions you set to match
+  your secure environment, OHDSI HADES), a shared
   phenotype library, and AI-assisted coding conventions for federated
   observational research using the OHDSI toolstack.
   Funding: Research reported in this publication was supported by the National

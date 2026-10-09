@@ -171,6 +171,7 @@ to the `used_by` list in `phenotype_library/catalog.yaml`.
 **Tier 3 — Live vocabulary query** (only when Tiers 1 and 2 both miss)
 
 ```bash
+# scripts/concept_lookup.R ships in synthea-omop-template: run it from inside a -synth repo (or `cd synthea-omop-template`)
 Rscript scripts/concept_lookup.R "<clinical term>" [domain]
 # or in Claude Code: /concept-lookup <clinical term> [domain]
 ```
@@ -219,6 +220,7 @@ Two ways to run a vocabulary lookup:
 
 **Standalone R script (terminal / batch):**
 ```bash
+# scripts/concept_lookup.R ships in synthea-omop-template: run it from inside a -synth repo (or `cd synthea-omop-template`)
 Rscript scripts/concept_lookup.R "<clinical term>" [domain]
 # Examples:
 Rscript scripts/concept_lookup.R "total hip replacement" Procedure
