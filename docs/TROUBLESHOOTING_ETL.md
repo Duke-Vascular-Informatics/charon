@@ -38,7 +38,8 @@ powershell -ExecutionPolicy Bypass -File workflow/04_generate_synthea_csv.ps1
   - Confirm SQL user has create/insert privileges on target schema
 
 - QC script reports low/empty counts:
-  - Re-check cohort concept IDs and SQL placeholders (`concept_id = 0`)
+  - Re-run `Rscript workflow/03_generate_synthea_module_artifacts.R` (does the module cover the consuming studies' cohorts?)
+  - Run `Rscript scripts/consumer_cohort_qc.R` to see which consuming cohorts are empty or too small
   - Re-run `Rscript scripts/check_setup.R`
 
 ## Logs and Escalation

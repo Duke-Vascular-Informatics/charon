@@ -72,35 +72,27 @@ Rules:
 - Join via `concept_ancestor` when descendant expansion is needed (e.g., all subtypes of a drug class).
 - Confirm `invalid_reason IS NULL` before committing any concept ID.
 
-## Cohort Table Convention
+## Cohorts
 
-Cohorts follow the standard OHDSI structure in `config$cohort_table`:
-
-```sql
-cohort_definition_id  BIGINT  -- matches config$target_cohort_id / outcome_cohort_id etc.
-subject_id            BIGINT  -- maps to person_id in the CDM
-cohort_start_date     DATE    -- index date (first qualifying event)
-cohort_end_date       DATE    -- observation end or censoring date
-```
-
-- IDs are defined in `config.R` — never hardcode `cohort_definition_id = 1` in analysis code.
-- This repo does not instantiate cohorts. Strategus does, in the analysis-core repo; the consuming studies' cohorts (`consumers.yaml`) are used only to QC the synthetic dataset.
+A `-synth` repo defines and instantiates no cohorts of its own. The cohorts that matter are those of
+the Strategus studies listed in `consumers.yaml`: `workflow/02` lists them, `workflow/03` checks the
+Synthea module can produce them, and `workflow/06` instantiates them into scratch tables
+(`qc_consumer_*`, dropped afterwards) to count people. Cohorts follow the standard OHDSI structure
+(`cohort_definition_id`, `subject_id`, `cohort_start_date`, `cohort_end_date`); never hardcode
+`cohort_definition_id` values here.
 
 ## Architecture Conventions
 
 > **Before generating any code:** Read `config.R` via `get_validation_config()` to understand
-> the current study's schema names, cohort IDs, SQL file paths, and output directory. Do not
+> the current study's schema names and output directory (and `consumers.yaml` for the studies the dataset must support). Do not
 > suggest hardcoded values for anything that lives in `config.R` or `study_params.yaml`.
 
-- **`config.R` is the single source of truth.** Always read configuration via `get_validation_config()`. Never hardcode schema names, cohort IDs, SQL paths, or output directories.
+- **`config.R` is the single source of truth.** Always read configuration via `get_validation_config()`. Never hardcode schema names or output directories.
 - **Know the repo type.** `synthea-omop-template` (`-synth` repos) is for analysis-specific *synthetic data generation only* (`workflow/01–06`); the analysis lives in a `strategus-study-template` repo and the manuscript in an `omop-report-template` repo. Do not add analysis or report code to a `-synth` repo.
-- **`workflow/02_define_omop_cohort_outcome_covariates.R`** (`-synth` repos) — declares and validates the cohort SQL and covariate definitions used to check the generated data. Fill these in only as far as validation needs.
+- **`workflow/02_define_omop_cohort_outcome_covariates.R`** (`-synth` repos) — lists the cohorts of every study in `consumers.yaml` (target, outcome, covariate); it holds no cohort definitions.
 - **Cohorts are not instantiated in a `-synth` repo.** Strategus instantiates them in the analysis-core repo. `consumers.yaml` lists the Strategus studies that use the dataset; `workflow/03` checks the Synthea module can produce their cohorts and `workflow/06` checks the final data.
 - **All outputs go to `config$output_folder`.** Do not hardcode output paths anywhere in code.
 - **Protected infrastructure** — do not modify: `R/drivers.R`, `R/connection.R`, `setup/`, `.devcontainer/`, `workflow/01`, `workflow/03`–`06`.
-- **Covariates directory layout** — all patient features live under `covariates/`:
-  - `covariates/covariates.csv` — one row per feature.
-  - `covariates/covariate_concepts.csv` — OMOP concept IDs for each feature.
 
 ---
 
@@ -142,7 +134,7 @@ Rscript phenotype_library/scripts/lookup_catalog.R --concept-id <integer>
 Rscript phenotype_library/scripts/lookup_catalog.R --status pending   # audit all unverified entries
 ```
 
-If a `status: verified` entry matches, copy the concept IDs directly into `covariates/covariate_concepts.csv`. Add the current study to the `used_by` list in `phenotype_library/catalog.yaml`. No live query needed.
+If a `status: verified` entry matches, copy the concept IDs directly into the cohort's concept set in the consuming study's `inst/cohorts/*.json` (or ATLAS). Add the current study to the `used_by` list in `phenotype_library/catalog.yaml`. No live query needed.
 
 **Tier 3 — Live vocabulary query (only when Tiers 1 and 2 both miss)**
 

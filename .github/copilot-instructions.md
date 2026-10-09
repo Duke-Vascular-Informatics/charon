@@ -80,15 +80,14 @@ When a user asks for setup help in a `-synth` repo, run the automated check firs
 Rscript scripts/check_setup.R
 ```
 
-This scans `study_params.yaml`, cohort SQL files, and covariate CSVs without a database connection and prints `[OK]` / `[WARN]` / `[FAIL]` for each item. Exit code 0 = ready to generate data.
+This scans `study_params.yaml`, `consumers.yaml` (the consuming studies must be present and readable) and the Synthea module without a database connection and prints `[OK]` / `[WARN]` / `[FAIL]` for each item. Exit code 0 = ready to generate data.
 
 If the script is not available, check these items manually:
 
-1. Read `study_params.yaml` — flag fields still at placeholder values: `"my_study"`, `"cdm_my_study"`, `"my_study_results"`, `"my_study_cohort"`, concept IDs = `0`.
-2. Read the cohort SQL files referenced in `target.sql_file`, `outcome.sql_file`, `comparator.sql_file` — flag any `concept_id = 0`.
-3. Check `covariates/covariates.csv` for placeholder rows (`covariate_id` matching `covariate_1`, `covariate_2`, etc.).
-4. Check `covariates/covariate_concepts.csv` for `concept_id = 0` rows.
-5. Confirm the generation parameters (population, age range, seed) are set.
+1. Read `study_params.yaml` — flag fields still at placeholder values: `"my_study"`, `"cdm_my_study"`, `"my_cdm_v5.4"`, `"My Study Database"`.
+2. Read `consumers.yaml` — it must list at least one consuming Strategus study, and `dataset_id` must not be `"my_study_synth_dataset"`.
+3. For each consumer, confirm its repo is cloned, `inst/Cohorts.csv` and every `inst/cohorts/<id>.json` exist, and the target and outcome ids can be determined.
+4. Check `synthea/modules/*.json` (other than `study_template.json`) for `REPLACE_ME` placeholders.
 
 Report using `[OK]` / `[WARN]` / `[FAIL]` format consistent with `scripts/check_setup.R`.
 

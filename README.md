@@ -211,8 +211,10 @@ source into OMOP CDM v5.4.
 
 **The analysis always lives in the analysis-core (Strategus) repo, and the
 manuscript in the report repo.** `synthea-omop-template` only generates
-analysis-specific synthetic data; its `cohorts/` and `covariates/` exist solely
-to check that the generated data contains the patients your study needs. The
+analysis-specific synthetic data and holds no cohort definitions: its
+`consumers.yaml` lists the Strategus studies that will use the data, and their own
+cohorts are checked against the Synthea module before generation and against the final
+data after it. The
 split is deliberate: the analysis-core repo is what you hand to other
 institutions, so nothing site- or report-specific may be in it, and the report
 repo must run on a laptop with only a clone and a `results/` folder, so it

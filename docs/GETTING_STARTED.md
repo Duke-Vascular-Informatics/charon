@@ -606,31 +606,28 @@ test connection.
 Rscript workflow/01_setup_synthea_etl_qc_env.R
 ```
 
-### Workflow 02 — Define your study ✏️ *Edit before running*
+### Workflow 02 — What the dataset must support ✏️ *Edit `consumers.yaml` first*
 
-Declare the cohorts and covariates your generated data must support, so the QC step can confirm the synthetic patients exist. Fill these in only as far as validation needs; the real study definitions live in your Strategus repo. Before running, edit:
-
-- **`study_params.yaml`** — `study_name`, `cdm_schema`, `results_schema`,
-  `cohort_table`, `output_folder`, and the generation parameters (population,
-  age range, seed).
-- **`cohorts/*.sql`** — replace every `concept_id = 0` placeholder with a real
-  concept ID, found via the Rule 1 lookup tiers. Every ID needs a trailing comment
-  naming the concept and its `[vocab query]` label.
-- **`covariates/covariates.csv` and `covariate_concepts.csv`** — the patient
-  features.
-
-Then validate:
+A `-synth` repo defines no cohorts, outcomes or covariates of its own. What the dataset must
+contain is defined by the studies that will use it, so list them in `consumers.yaml` (their
+cohort definitions in their own Strategus repos are read directly; nothing is copied here). Also
+set `study_params.yaml` (`study_name`, `cdm_schema`, and the database description). Then run:
 
 ```bash
-Rscript workflow/02_define_omop_cohort_outcome_covariates.R
+Rscript scripts/check_setup.R                                    # [OK] / [WARN] / [FAIL] checklist
+Rscript workflow/02_define_omop_cohort_outcome_covariates.R      # lists each study's cohorts
 ```
 
-It prints `[OK]` / `[WARN]` / `[FAIL]` per item; fix every `[FAIL]` first.
+Workflow 02 needs no database. It prints each consuming study's target, outcome and covariate
+cohorts and warns about anything that would stop later checks (study repo not cloned, missing
+cohort JSON, unresolvable target or outcome id). The same list drives Workflow 03 and 06.
 
-### Workflow 03 — Validate Synthea module
+### Workflow 03 — Validate Synthea module, check it covers the consuming studies
 
-Checks the Synthea disease module (the JSON state machine that decides what
-synthetic patients get). No edits.
+Checks the Synthea disease module (the JSON state machine that decides what synthetic patients
+get), then checks — before any data is generated — that the custom module **and** Synthea's
+built-in modules can produce the cohorts of every study in `consumers.yaml`
+(`--enforce_coverage=true` stops on a gap). No edits.
 
 ```bash
 Rscript workflow/03_generate_synthea_module_artifacts.R

@@ -76,12 +76,11 @@ Study-specific content lives in the study repos, each created from one template.
 report code or bundle-packaging to a `-synth` repo.
 
 Inside a **`-synth` repo**:
-- `config.R` — settings (schemas, cohort IDs, SQL paths, output folder)
+- `consumers.yaml` — **the specification**: the Strategus studies that use the dataset. A `-synth` repo defines no cohorts, outcomes or covariates of its own; those come from the consuming studies' own cohort definitions (`inst/Cohorts.csv`, `inst/cohorts/*.json`), read directly.
 - `synthea/modules/` — the Synthea disease/procedure module (the main thing you edit)
-- `cohorts/`, `covariates/` — SQL and CSV definitions, filled in **only as far as needed to validate the generated data**
-- `workflow/02` — declares those definitions and validates them, and lists the cohorts of every study in `consumers.yaml`
-- `consumers.yaml` — the Strategus studies that use this dataset; their cohorts are what the module and the final data are checked against
-- `study_params.yaml` — generation parameters (population, age range, seed) and schema names
+- `workflow/02` — lists the consuming studies' cohorts (target, outcome, covariate); no database
+- `study_params.yaml` — identity, schema names and the database description (no cohort or concept settings)
+- `config.R` — settings read from `study_params.yaml` (schemas, output folder, connection)
 
 Infrastructure is pre-wired and should not be modified:
 - `R/drivers.R`, `R/connection.R` — database helpers
@@ -89,8 +88,8 @@ Infrastructure is pre-wired and should not be modified:
 - `setup/`, `.devcontainer/` — renv and Docker environment
 - `workflow/01`, `03–06` — setup, Synthea generation, ETL and QC steps
 
-In a `-synth` repo, **read `config.R` first** to understand the schema names, cohort IDs
-and file paths before suggesting any code. In a Strategus repo, read its `CLAUDE.md`,
+In a `-synth` repo, **read `config.R` and `consumers.yaml` first** to understand the schema names
+and which studies' cohorts the dataset must support before suggesting any code. In a Strategus repo, read its `CLAUDE.md`,
 `CHECKLIST.md` and `inst/Cohorts.csv` instead.
 
 ---
@@ -166,7 +165,7 @@ Rscript phenotype_library/scripts/check_overlap.R --atlas-json <path>       # e.
 ```
 
 If a `status: verified` entry matches, copy the concept IDs directly into
-`covariates/covariate_concepts.csv`. No live query needed. Add the current study
+the cohort's concept set in the consuming study's `inst/cohorts/*.json` (or ATLAS). No live query needed. Add the current study
 to the `used_by` list in `phenotype_library/catalog.yaml`.
 
 **Tier 3 — Live vocabulary query** (only when Tiers 1 and 2 both miss)
@@ -382,8 +381,7 @@ run it from inside the `-synth` repo:
 Rscript scripts/check_setup.R
 ```
 
-It scans `study_params.yaml`, cohort SQL files, and covariate CSVs without a database
-connection and prints a sectioned [OK] / [WARN] / [FAIL] checklist. Exit code 0 = ready
+It scans `study_params.yaml`, `consumers.yaml` (the consuming studies must be present and readable) and the Synthea module without a database connection and prints a sectioned [OK] / [WARN] / [FAIL] checklist. Exit code 0 = ready
 to generate data; exit code 1 = items require attention.
 
 **Note:** Claude Code users can also use `/check-setup` skill if available.
@@ -393,16 +391,15 @@ to generate data; exit code 1 = items require attention.
 When a user asks for setup help and hasn't run the script, perform these checks inline:
 
 1. Read `study_params.yaml` and identify fields still at their default placeholder values
-   (`"my_study"`, `"cdm_my_study"`, `"my_study_results"`, `"my_study_cohort"`,
-   `"output/my_study"`, concept IDs = `0`).
-2. Read the cohort SQL files referenced in `target.sql_file` and `outcome.sql_file`
-   (and `comparator.sql_file` when `comparator.cohort_id` is set) and flag any lines
-   containing `concept_id = 0`.
-3. Check `covariates/covariates.csv` for placeholder rows (`covariate_id` matching
-   `covariate_1`, `covariate_2`, etc.).
-4. Check `covariates/covariate_concepts.csv` for `concept_id = 0` rows.
-5. Confirm the generation parameters (population, age range, seed) are set.
-6. Summarize what is complete and what still needs filling in before generating data,
+   (`"my_study"`, `"cdm_my_study"`, `"my_cdm_v5.4"`, `"My Study Database"`).
+2. Read `consumers.yaml`: it must list at least one consuming Strategus study, and
+   `dataset_id` must not be `"my_study_synth_dataset"`.
+3. For each consumer, confirm its repo is cloned (sibling of this repo, or `repo_dir`), that
+   `inst/Cohorts.csv` and every `inst/cohorts/<id>.json` exist, and that the target and outcome
+   ids can be read from `CreateStrategusAnalysisSpecification.R` (or are set in `consumers.yaml`).
+4. Check `synthea/modules/*.json` (other than `study_template.json`) for `REPLACE_ME` placeholders.
+   (Generation parameters such as population and age range are arguments to `workflow/04`, not settings.)
+5. Summarize what is complete and what still needs filling in before generating data,
    using the same [OK] / [WARN] / [FAIL] format as `scripts/check_setup.R`.
 
 ---
