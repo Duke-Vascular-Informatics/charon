@@ -8,7 +8,7 @@ a single source of truth for verified OMOP concept IDs.
 
 ## Lookup Tiers — Mandatory Before Any Concept ID
 
-Before writing any concept ID into a study's `cohorts/`, `covariates/`, or SQL:
+Before writing any concept ID into a study's cohort definitions (`inst/cohorts/*.json`), a Synthea module, or SQL:
 
 ```
 Tier 1a → Check OHDSI Phenotype Library
@@ -194,7 +194,7 @@ structurally poor for that concept type.
 
 These are tracked in a separate `omop_limited_entries:` section at the bottom
 of `catalog.yaml`. They are **not** part of the lookup-tier workflow and
-should **not** be used as concept ID sources in `covariates/` or `cohorts/`
+should **not** be used as concept ID sources in a study's cohort definitions
 without first building and validating the indicated extraction pipeline.
 
 ### Development paths

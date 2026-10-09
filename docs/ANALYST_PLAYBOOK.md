@@ -121,7 +121,8 @@ These ship in `synthea-omop-template`, not in the workspace root or the
 Strategus template, so they exist only in `-synth` repos:
 
 - `Rscript scripts/check_setup.R` — pre-flight `[OK]/[WARN]/[FAIL]` report on
-  placeholder values in `study_params.yaml`, cohort SQL and covariate CSVs.
+  placeholder values in `study_params.yaml`, whether the consuming studies in `consumers.yaml`
+  are present and readable, and `REPLACE_ME` placeholders in the Synthea module.
 - `Rscript scripts/find_todos.R` — lists every `# TODO [LABEL]:` marker.
 - `bash scripts/hooks/install_git_hooks.sh` — installs pre-commit/pre-push
   hooks that run those checks. Bypass once with `SKIP_ANALYST_HOOKS=1 git commit ...`.

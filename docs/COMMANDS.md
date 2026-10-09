@@ -24,7 +24,7 @@ When a command changes:
 | Create your working branch | `BRANCH=$(gh api user --jq .login) && git checkout -b "$BRANCH" && git push -u origin "$BRANCH"` | [Step 10](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
 | Clone your report repo | `git clone https://github.com/<your-org>/<your-study>-report.git` | [Step 10](GETTING_STARTED.md#step-10-create-your-study-repositories-10-minutes) |
 | Environment setup (`-synth` repo) | `Rscript workflow/01_setup_synthea_etl_qc_env.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
-| Validate cohort, outcome, and covariate definitions (`-synth` repo) | `Rscript workflow/02_define_omop_cohort_outcome_covariates.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
+| List the cohorts a `-synth` dataset must support (from `consumers.yaml`; `-synth` repo) | `Rscript workflow/02_define_omop_cohort_outcome_covariates.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Validate Synthea module | `Rscript workflow/03_generate_synthea_module_artifacts.R` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Generate Synthea CSV (bash) | `bash workflow/04_generate_synthea_csv.sh` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
 | Generate Synthea CSV (PowerShell) | `powershell -ExecutionPolicy Bypass -File workflow/04_generate_synthea_csv.ps1` | [Step 11](GETTING_STARTED.md#step-11-run-the-study-workflow-23-hours-total) |
