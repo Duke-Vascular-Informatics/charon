@@ -22,11 +22,46 @@ Detailed references:
 min `.env` and container build, 30–60 min vocabulary load.
 **Repeat-study time:** ~10–20 minutes (packages cached, SQL Server already
 running; start at Step 10).
-**Before you start:** find out which R, Java and Python versions your secure
-analytics environment uses ([Step 6.0](#60-match-the-container-to-your-secure-environment-before-the-first-build)).
-**Requires:** ~35 GB of disk, **16 GB RAM allocated to Docker** (12 GB is the
-minimum; below that the vocabulary load is killed by the OS with no error —
-see Step 3.1), and internet access.
+## Prerequisites — check these BEFORE you start
+
+This workspace runs on **your own computer's disk** (R, Java, and SQL Server all
+inside Docker containers). It does not run on a locked-down machine that forbids
+Docker, and it is not designed for a shared cloud or VM. Confirm everything below
+first; discovering a gap in Step 9 costs you an hour.
+
+**Computer**
+
+| Requirement | Minimum | Recommended |
+|---|---|---|
+| Free disk space | 35 GB | **80 GB** (headroom for build cache and a second dataset) |
+| RAM | 12 GB allocated to Docker | **16 GB** (8 GB is killed silently during the vocabulary load — Step 3.1) |
+| Operating system | macOS, Windows 10/11 (with WSL2), or Linux | Apple Silicon and Intel both work |
+| Permission to install software | Admin rights to install Docker Desktop | — |
+| Internet | Required throughout setup | — |
+
+> A university-managed laptop or VM that blocks Docker or admin installs will not
+> work. Check with your IT group first, or use a personal machine.
+
+**Accounts (free unless noted)**
+
+| Account | Needed for | Step |
+|---|---|---|
+| GitHub account, added to the lab's GitHub organization | cloning, pushing, PRs | 1, 6.3 |
+| **Claude access — one of:** a Claude subscription (Pro/Max/Team) **or** an Anthropic API key | the AI coding assistant | 6.2 |
+| [OHDSI Athena](https://athena.ohdsi.org) account | downloading the OMOP vocabulary | 8 |
+| UMLS account and API key | rebuilding CPT-4 codes — *optional* | 8.3 |
+
+**Things you will need to make or approve along the way**
+- A GitHub **fine-grained access token** with **Contents: Read and write** (not
+  read-only) on every repo you will push to — Step 6.3.
+- Approval of that token by the organization's owner, if the org requires it.
+- A strong SQL Server password you choose — Step 6.4.
+
+- The R, Java and Python versions your secure analytics environment uses —
+  [Step 6.0](#60-match-the-container-to-your-secure-environment-before-the-first-build).
+
+**Skills assumed:** comfortable with git and a terminal. Every command in this
+guide says exactly where to run it.
 
 **What you will build, in order:**
 
@@ -221,26 +256,111 @@ cp .env.example .env
 ```
 
 (Windows PowerShell: `Copy-Item .env.example .env`.) Keep `.env.example` as a
-reference. Open `.env` in VS Code and set the three values below. The other
+reference. Open `.env` in VS Code and set the values below. The other
 variables have working defaults for local development; leave them.
 
-### 6.2 `ANTHROPIC_API_KEY`
+### 6.2 Connect Claude (choose ONE of two options)
 
-Your key from [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
-It lets Claude Code run inside the container.
+The container ships with the Claude Code assistant. Pick whichever matches how
+you pay for Claude.
 
-### 6.3 `GH_TOKEN`
+**Option A — Claude subscription (Pro / Max / Team) via the Claude desktop app
+(no API key needed).**
 
-A GitHub personal access token. One token serves two purposes: it lets the
-assistant commit, push and open PRs as you, and the container reuses it as
-`GITHUB_PAT` so `renv` can restore HADES packages hosted on GitHub without
-hitting the 60-requests-per-hour anonymous rate limit (which a shared
-university network exhausts quickly, failing the container build).
+1. Download and install the **Claude desktop app** from
+   [claude.ai/download](https://claude.ai/download) and sign in with your
+   Claude account.
+2. Leave `ANTHROPIC_API_KEY` in `.env` **blank or commented out** (put a `#` at
+   the start of the line). If a placeholder or invalid key is set, Claude Code
+   will use it instead of your subscription and fail with authentication errors.
+3. Finish building the container (Step 6.5) so VS Code is attached to the
+   container.
+4. In the Claude desktop app, open the **Code** tab and select the project
+   folder you have open in VS Code (the `<workspace-root>` folder on your
+   computer). Claude edits those files directly; because VS Code mounts that
+   same folder into the container, your edits appear in the container
+   immediately.
+5. **Run commands in the container, not on your computer.** R, Java, and the
+   database live only inside the dev container. Open the container's terminal in
+   VS Code (`` Ctrl+` `` / `` Cmd+` ``) for anything you run yourself, and when
+   Claude needs to run `Rscript` or SQL, tell it to run them through the
+   container, e.g.:
 
-1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
-2. Name it after the workspace repo; expiration 90 days.
-3. Repository permissions: **Contents: Read-only**, **Pull requests: Read and write**.
-4. Generate, copy it immediately, and paste it into `.env`.
+   ```bash
+   docker exec <container-name> Rscript scripts/check_setup.R
+   ```
+
+   (`docker ps` shows the container name; it is usually `omop_dev-devcontainer-1`
+   or similar.) You can put this instruction in your first message: *"Run all R
+   and SQL commands inside the dev container with docker exec."*
+
+   Alternatively, use the **Claude Code extension for VS Code** (search
+   "Claude Code" in the Extensions panel) or run `claude` in the VS Code
+   container terminal and choose **Log in with your Claude account** when
+   prompted. Both work with a subscription and run inside the container.
+
+**Option B — Anthropic API key (pay-per-token).**
+
+In VS Code's file explorer, click `.env` to open it, find:
+
+```
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+and replace `your_anthropic_api_key_here` with your key from
+[console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
+API usage is billed separately from any Claude subscription.
+
+> Not sure which you have? If you log in to claude.ai with a paid plan, use
+> Option A. If your lab gave you a key starting with `sk-ant-`, use Option B.
+
+### 6.3 Create a GitHub Personal Access Token and paste it
+
+Find the line:
+
+```
+GH_TOKEN=your_github_pat_here
+```
+
+You need to create a token on GitHub and paste it here. This token lets your
+AI coding assistant commit and push code on your behalf, and lets R install packages
+from GitHub without hitting rate limits.
+
+> **The token must allow WRITING to your repositories.** Pushing a commit needs
+> *Contents: Read and write*. A read-only token lets you clone and read, but
+> `git push` then fails with `403` / `Permission denied to <user>` /
+> `Resource not accessible by personal access token`. (Earlier versions of this
+> guide said "Read-only" here; that was wrong for anyone who pushes.)
+
+**Create the token (takes 2 minutes):**
+
+1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+   (a *fine-grained* token)
+2. Name it something recognizable, e.g. your workspace repo's name
+3. Set expiration to **90 days** (you can regenerate it when it expires)
+4. **Resource owner:** choose the organization or account that owns the repos
+   you will push to (not just your personal account). If the organization does
+   not appear or shows "approval required", ask an org owner to approve the
+   token (or enable fine-grained tokens for the org).
+5. **Repository access:** choose **Only select repositories** and select *every*
+   repo you will push to (the workspace repo, plus each study repo you create
+   later), or choose **All repositories**. A token only works on the repos
+   selected here — forgetting one gives a `403`/`404` on that repo.
+6. Under **Repository permissions**, set:
+   - **Contents:** **Read and write** (commit and push)
+   - **Pull requests:** **Read and write** (open and merge PRs)
+   - **Workflows:** Read and write — only if you will edit files under
+     `.github/workflows/`
+   - **Metadata:** Read-only (added automatically)
+7. Click **Generate token** — copy the value immediately (you cannot view it again)
+
+Back in `.env`, replace `your_github_pat_here` with the token you just copied,
+then rebuild or reopen the container so it picks up the new value
+(`Cmd+Shift+P` → **Dev Containers: Rebuild Container**).
+
+If you change permissions on an existing token, the same token string keeps
+working with the new permissions; if you generate a *new* token, update `.env`
+and rebuild.
 
 ### 6.4 `MSSQL_SA_PASSWORD`
 
@@ -358,12 +478,25 @@ echo $MSSQL_HOST                # Should print: mssql_dev
 `docker ps` should also list `mssql_dev` as healthy (the host's Docker
 socket is mounted into the container, so this works from inside).
 
-Authenticate `gh` for your assistant:
+**Authenticate git/`gh` for your assistant.** Because `GH_TOKEN` is in your `.env`, the container already passes it to the
+GitHub CLI (`gh`) automatically. Do **not** run `gh auth login --with-token` —
+`gh` will refuse with *"The value of the GH_TOKEN environment variable is being
+used for authentication"*. Instead, run:
 
 ```bash
-gh auth login --with-token <<< "$GH_TOKEN"
-gh auth status          # Should show: Logged in to github.com
+gh auth status          # Should show: Logged in to github.com ... (GH_TOKEN)
+gh auth setup-git       # Lets plain `git push` over HTTPS use the same token
 ```
+
+Then verify the token can actually **write** (not just read), from inside the
+workspace repo:
+
+```bash
+git push --dry-run      # No error = authentication works
+```
+
+(The real test is your first `git push` in Step 10.3. If it fails, see
+[GIT_GITHUB_AUTH.md → Troubleshooting push errors](GIT_GITHUB_AUTH.md#troubleshooting-push-errors).)
 
 > If `$MSSQL_HOST` is empty, or R reports "connection refused" on
 > `localhost:1433`, see
@@ -579,6 +712,49 @@ catalog before running a live vocabulary query ([Rule 1](../README.md#rules-you-
 ├── <study>/            ← analysis-core; output/ is read by the report repo
 └── <study>-report/     ← report repo (sibling)
 ```
+
+---
+
+## Before Your First Analysis: Pre-flight Checklist (5 minutes)
+
+Run through this once, **in the VS Code container terminal**, after Step 10 and
+before Step 11. Every item should pass. Each failure points to the step that fixes
+it. Re-run it any time something stops working after a rebuild or token change.
+
+| # | Check | Command (container terminal) | Passing result | If it fails |
+|---|---|---|---|---|
+| 1 | In the container | `echo $IN_DEV_CONTAINER` | `true` | Reopen with **Dev Containers: Reopen in Container** (Step 6.5) |
+| 2 | R version | `R --version` | `R version 4.5.x` | Rebuild the container |
+| 3 | Java | `java -version` | a Java 17 line | Rebuild the container |
+| 4 | Database host set | `echo $MSSQL_HOST` | `mssql_dev` | Rebuild the container (Step 6.5) |
+| 5 | SQL Server healthy | `docker ps` | `mssql_dev` shows `healthy` | Start Docker Desktop; see Troubleshooting |
+| 6 | `.env` values loaded | `[ -n "$GH_TOKEN" ] && echo ok` | `ok` | Fill in `.env`, then rebuild (Step 6) |
+| 7 | *(Optional)* Claude works | Only if you run Claude inside the container: `claude --version`, then start `claude` and ask "say hi". Skip if you use the desktop app or the VS Code extension. | a reply, no auth error | Step 6.2 (blank `ANTHROPIC_API_KEY` for a subscription) |
+| 8 | GitHub authenticated | `gh auth status` | `Logged in to github.com` | Step 7 |
+| 9 | Token can **write** | `gh api repos/<org>/<your-study-repo> --jq .permissions.push` | `true` | Token needs Contents: Read and write on that repo ([GIT_GITHUB_AUTH.md](GIT_GITHUB_AUTH.md#troubleshooting-push-errors)) |
+| 10 | On your own branch | `git branch --show-current` | equals `gh api user --jq .login` | Step 10.3 |
+| 11 | Push works | `git push --dry-run` | no error | Same as #9 |
+| 12 | Vocabulary loaded | see snippet below | a row count in the millions | Step 9; [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md) |
+| 13 | Study config complete | `Rscript scripts/check_setup.R` (inside your study folder) | exit code 0, no `[FAIL]` | Edit the items it lists |
+
+**Check 12: confirm the vocabulary is actually loaded.** From your study folder
+(`cd /workspace/<your-study>`):
+
+```bash
+Rscript -e '
+  source("config.R"); source("R/drivers.R"); source("R/connection.R")
+  cfg <- get_validation_config()
+  ensure_jdbc_bundle(cfg)
+  conn <- DatabaseConnector::connect(build_connection_details(cfg))
+  print(DatabaseConnector::querySql(conn, "SELECT COUNT(*) AS n_concepts FROM omop_vocab.concept;"))
+  DatabaseConnector::disconnect(conn)
+'
+```
+
+`n_concepts` should be in the millions. An error, or 0, means Step 9 did not finish.
+
+**Do not start Step 11 until checks 1–13 pass** (check 7 only if you use Claude inside the container). Checks 9 and 11 are the ones
+students most often skip, and they only fail later, at the first push.
 
 ---
 

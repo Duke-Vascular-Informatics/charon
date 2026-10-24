@@ -32,8 +32,10 @@ git config --global user.name
 git config --global user.email
 ```
 
-**Inside the dev container** — the container has `gh` pre-installed but starts
-unauthenticated. Re-authenticate once after first build:
+**Inside the dev container** — if you set `GH_TOKEN` in `.env` (the standard
+onboarding path), `gh` is already authenticated; just run `gh auth status` and
+`gh auth setup-git`. Do not run `gh auth login --with-token` while `GH_TOKEN` is
+set (it refuses). The options below apply only if you left `GH_TOKEN` blank:
 
 ```bash
 # Option A: interactive login inside the container
@@ -62,6 +64,47 @@ Once credentials are in place, the agent can:
 The agent will always show you the command before running a push or merge,
 and will ask for confirmation. It will not push to `main` directly (protected branch)
 and will not delete your permanent working branch.
+
+---
+
+## Troubleshooting push errors
+
+Symptoms: `remote: Permission to <org>/<repo>.git denied to <user>`,
+`HTTP 403`, `Resource not accessible by personal access token`, or
+`Repository not found` on a repo you can clearly see on github.com.
+
+The usual cause is a **fine-grained token that is read-only or scoped to the
+wrong repos**. Check, in order:
+
+1. **Contents permission.** At
+   [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens),
+   open the token: *Repository permissions → Contents* must be **Read and
+   write**. (`Read-only` allows clone/pull but not push.) Pull requests must
+   also be Read and write for `gh pr create` / `gh pr merge`.
+2. **Repository access.** The token only works on repos it lists. Add the repo
+   you are pushing to (new study repos need adding too).
+3. **Resource owner.** For org repos the token's resource owner must be the
+   org, and the org may need to approve it (status shows "Pending" until then).
+4. **Expired or replaced token.** Tokens expire (90 days by default). After
+   editing `.env`, rebuild the container — environment variables are only read
+   at container start.
+5. **Wrong credential in use.** Run `gh auth status` and
+   `git config --get credential.helper`. If `gh auth setup-git` was never run,
+   `git push` over HTTPS may prompt or use a stale credential.
+6. **Protected branch.** Pushing directly to `main` is blocked by design; push
+   your personal branch (`git branch --show-current` should equal your GitHub
+   username) and open a PR.
+7. **Workflow files.** Changes under `.github/workflows/` need the token's
+   *Workflows: Read and write* permission.
+
+Quick test of what the token can do:
+
+```bash
+gh api repos/<org>/<repo> --jq '.permissions'   # push: true is required
+```
+
+If `push` is `false`, fix the token (steps 1–3). If it is `true` but `git push`
+still fails, fix the credential helper (step 5).
 
 ---
 
