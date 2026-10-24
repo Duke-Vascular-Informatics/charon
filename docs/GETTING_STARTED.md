@@ -715,6 +715,49 @@ catalog before running a live vocabulary query ([Rule 1](../README.md#rules-you-
 
 ---
 
+## Before Your First Analysis: Pre-flight Checklist (5 minutes)
+
+Run through this once, **in the VS Code container terminal**, after Step 10 and
+before Step 11. Every item should pass. Each failure points to the step that fixes
+it. Re-run it any time something stops working after a rebuild or token change.
+
+| # | Check | Command (container terminal) | Passing result | If it fails |
+|---|---|---|---|---|
+| 1 | In the container | `echo $IN_DEV_CONTAINER` | `true` | Reopen with **Dev Containers: Reopen in Container** (Step 6.5) |
+| 2 | R version | `R --version` | `R version 4.5.x` | Rebuild the container |
+| 3 | Java | `java -version` | a Java 17 line | Rebuild the container |
+| 4 | Database host set | `echo $MSSQL_HOST` | `mssql_dev` | Rebuild the container (Step 6.5) |
+| 5 | SQL Server healthy | `docker ps` | `mssql_dev` shows `healthy` | Start Docker Desktop; see Troubleshooting |
+| 6 | `.env` values loaded | `[ -n "$GH_TOKEN" ] && echo ok` | `ok` | Fill in `.env`, then rebuild (Step 6) |
+| 7 | Claude works | `claude --version`, then start `claude` and ask "say hi" | a reply, no auth error | Step 6.2 (blank `ANTHROPIC_API_KEY` for a subscription) |
+| 8 | GitHub authenticated | `gh auth status` | `Logged in to github.com` | Step 7 |
+| 9 | Token can **write** | `gh api repos/<org>/<your-study-repo> --jq .permissions.push` | `true` | Token needs Contents: Read and write on that repo ([GIT_GITHUB_AUTH.md](GIT_GITHUB_AUTH.md#troubleshooting-push-errors)) |
+| 10 | On your own branch | `git branch --show-current` | equals `gh api user --jq .login` | Step 10.3 |
+| 11 | Push works | `git push --dry-run` | no error | Same as #9 |
+| 12 | Vocabulary loaded | see snippet below | a row count in the millions | Step 9; [TROUBLESHOOTING_VOCAB_LOAD.md](TROUBLESHOOTING_VOCAB_LOAD.md) |
+| 13 | Study config complete | `Rscript scripts/check_setup.R` (inside your study folder) | exit code 0, no `[FAIL]` | Edit the items it lists |
+
+**Check 12: confirm the vocabulary is actually loaded.** From your study folder
+(`cd /workspace/<your-study>`):
+
+```bash
+Rscript -e '
+  source("config.R"); source("R/drivers.R"); source("R/connection.R")
+  cfg <- get_validation_config()
+  ensure_jdbc_bundle(cfg)
+  conn <- DatabaseConnector::connect(build_connection_details(cfg))
+  print(DatabaseConnector::querySql(conn, "SELECT COUNT(*) AS n_concepts FROM omop_vocab.concept;"))
+  DatabaseConnector::disconnect(conn)
+'
+```
+
+`n_concepts` should be in the millions. An error, or 0, means Step 9 did not finish.
+
+**Do not start Step 11 until checks 1–13 pass.** Checks 9 and 11 are the ones
+students most often skip, and they only fail later, at the first push.
+
+---
+
 ## Step 11: Run the Study Workflow (2–3 hours total)
 
 > **Which repo is this for?** Step 11 applies only to a **`-synth` repo**
