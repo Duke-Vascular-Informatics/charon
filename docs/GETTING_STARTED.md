@@ -729,7 +729,7 @@ it. Re-run it any time something stops working after a rebuild or token change.
 | 4 | Database host set | `echo $MSSQL_HOST` | `mssql_dev` | Rebuild the container (Step 6.5) |
 | 5 | SQL Server healthy | `docker ps` | `mssql_dev` shows `healthy` | Start Docker Desktop; see Troubleshooting |
 | 6 | `.env` values loaded | `[ -n "$GH_TOKEN" ] && echo ok` | `ok` | Fill in `.env`, then rebuild (Step 6) |
-| 7 | Claude works | `claude --version`, then start `claude` and ask "say hi" | a reply, no auth error | Step 6.2 (blank `ANTHROPIC_API_KEY` for a subscription) |
+| 7 | *(Optional)* Claude works | Only if you run Claude inside the container: `claude --version`, then start `claude` and ask "say hi". Skip if you use the desktop app or the VS Code extension. | a reply, no auth error | Step 6.2 (blank `ANTHROPIC_API_KEY` for a subscription) |
 | 8 | GitHub authenticated | `gh auth status` | `Logged in to github.com` | Step 7 |
 | 9 | Token can **write** | `gh api repos/<org>/<your-study-repo> --jq .permissions.push` | `true` | Token needs Contents: Read and write on that repo ([GIT_GITHUB_AUTH.md](GIT_GITHUB_AUTH.md#troubleshooting-push-errors)) |
 | 10 | On your own branch | `git branch --show-current` | equals `gh api user --jq .login` | Step 10.3 |
@@ -753,7 +753,7 @@ Rscript -e '
 
 `n_concepts` should be in the millions. An error, or 0, means Step 9 did not finish.
 
-**Do not start Step 11 until checks 1–13 pass.** Checks 9 and 11 are the ones
+**Do not start Step 11 until checks 1–13 pass** (check 7 only if you use Claude inside the container). Checks 9 and 11 are the ones
 students most often skip, and they only fail later, at the first push.
 
 ---
