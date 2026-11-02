@@ -226,6 +226,11 @@ for (entry in matches) {
   pl_id <- entry$ohdsi_pl_id %||% "not checked"
   pl_dt <- entry$ohdsi_pl_checked %||% "—"
   cat(sprintf("  OHDSI PL : %s (checked: %s)\n", pl_id, pl_dt))
+  # Optional per-entry comparison with the closest PL entries (see catalog.yaml header).
+  for (lk in entry$ohdsi_pl_links %||% list()) {
+    cat(sprintf("    PL %s %s [%s; %s]\n", lk$pl_id %||% "?", lk$pl_name %||% "", lk$relation %||% "?",
+                lk$decision %||% "no decision recorded"))
+  }
 
   # Hierarchy relationships
   parent_ids   <- entry$parent_ids %||% character(0)

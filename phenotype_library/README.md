@@ -37,9 +37,13 @@ Rscript phenotype_library/scripts/check_pl.R "peripheral arterial disease"
 Rscript phenotype_library/scripts/check_pl.R "heart failure"
 ```
 
-If a match is found, record `ohdsi_pl_id` and `ohdsi_pl_checked` in `catalog.yaml`
-and cite the phenotype in study documentation. This tier is "check and cite if
-found" — a local definition MAY still differ from a published PL phenotype.
+If a match is found, **use the published phenotype preferentially**: record `ohdsi_pl_id`
+and `ohdsi_pl_checked` in `catalog.yaml`, cite the phenotype in study documentation, and
+align the local definition to it unless there is a clear analytic reason to deviate
+(for example a different clinical scope than the study question). Record each outcome in
+the entry's `ohdsi_pl_links` list (`decision: aligned | aligned_with_deviation | deviates`
+with a `decision_reason`). Many library entries are listed as "Pending" or "Pending peer
+review", so cite the ID and do not call an entry peer reviewed unless its status says so.
 
 ### Tier 1b — Label-Prefixed ATLAS Cohorts/Concept Sets — AUTHORITATIVE
 
@@ -149,6 +153,12 @@ Copy the template below into `catalog.yaml` and fill it in:
   domain: Condition             # Condition | Procedure | Measurement | Drug | Observation | Visit | Demographic | Composite
   ohdsi_pl_id: ~                # integer if found in OHDSI PL; ~ if not found or not checked
   ohdsi_pl_checked: "2026-05-12"  # ISO date you ran check_pl.R; ~ if not yet checked
+  ohdsi_pl_links:               # optional: closest PL entries and how they compare (field reference in catalog.yaml header)
+    - pl_id: 1234
+      pl_name: "Name as listed in the PL"
+      relation: related         # equivalent | near_equivalent | subset_of_pl | related
+      checked: "2026-05-12"
+      notes: "Concept overlap evidence (Jaccard, concepts only on one side)."
   status: verified              # verified | pending | partial
   subgroup_ids:                 # list child entry ids if this entry has subgroups; omit if none
     - my_subgroup_phenotype

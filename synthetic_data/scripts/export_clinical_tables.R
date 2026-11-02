@@ -46,7 +46,10 @@ CLINICAL_TABLE_ALLOWLIST <- c(
   "person", "observation_period", "visit_occurrence", "visit_detail",
   "condition_occurrence", "drug_exposure", "procedure_occurrence",
   "measurement", "observation", "death",
-  "condition_era", "drug_era", "dose_era"
+  "condition_era", "drug_era", "dose_era",
+  # CDM metadata (one row, no patient data, not vocabulary). Strategus refuses to
+  # run against a CDM with an empty cdm_source, so exports must carry it.
+  "cdm_source"
 )
 
 VOCAB_TABLE_DENYLIST <- c(
