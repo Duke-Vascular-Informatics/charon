@@ -154,6 +154,21 @@ if (!requireNamespace("CommonDataModel", quietly = TRUE)) {
   )
 }
 
+# DatabaseConnector locates the SQL Server JDBC driver through this variable.
+# Without it, connect() fails with a missing-driver error unless the caller has
+# exported it by hand. Default to the synthea-omop-template driver folder (the
+# same one the Strategus templates' StrategusCodeToRun.R points at); an existing
+# value from the environment wins so a custom driver location still works.
+if (!nzchar(Sys.getenv("DATABASECONNECTOR_JAR_FOLDER"))) {
+  jdbc_runtime_dir <- file.path("synthea-omop-template", "drivers", "jdbc-runtime")
+  if (!dir.exists(jdbc_runtime_dir)) {
+    stop("[import_clinical_tables] JDBC driver folder not found: ", jdbc_runtime_dir,
+         ". Run from the workspace root after building synthea-omop-template's drivers, ",
+         "or set DATABASECONNECTOR_JAR_FOLDER yourself.")
+  }
+  Sys.setenv(DATABASECONNECTOR_JAR_FOLDER = normalizePath(jdbc_runtime_dir))
+}
+
 connection_details <- DatabaseConnector::createConnectionDetails(
   dbms         = "sql server",
   server       = Sys.getenv("OMOP_SERVER", "localhost"),
@@ -198,7 +213,11 @@ CommonDataModel::executeDdl(
 # vocabulary content with zero rows. Drop everything executeDdl created that
 # we don't actually have data for.
 created_tables <- DatabaseConnector::getTableNames(connection, databaseSchema = target_schema)
-unloaded_tables <- setdiff(tolower(created_tables), tolower(table_names))
+# cdm_source is kept even when the zip has no copy of it (datasets exported
+# before it joined the export allowlist): it is CDM metadata, not vocabulary,
+# and Strategus refuses to run against a CDM without a cdm_source row. A
+# placeholder row is inserted for it further below.
+unloaded_tables <- setdiff(tolower(created_tables), c(tolower(table_names), "cdm_source"))
 for (tbl in unloaded_tables) {
   DatabaseConnector::executeSql(connection, sprintf("DROP TABLE IF EXISTS %s.%s;", bare_target_schema, tbl))
 }
@@ -220,6 +239,50 @@ for (csv in csv_files) {
     createTable       = FALSE,
     progressBar       = TRUE
   )
+}
+
+# ---------------------------------------------------------------------------
+# cdm_source: guarantee exactly one row
+# ---------------------------------------------------------------------------
+# Datasets exported before cdm_source joined the export allowlist have no
+# cdm_source CSV, and Strategus aborts against a CDM whose cdm_source is empty.
+# Insert a placeholder describing this import. Skipped when the zip supplied one.
+if (!("cdm_source" %in% tolower(table_names))) {
+  # vocabulary_version lives on the vocabulary row with vocabulary_id = 'None'.
+  vocab_version <- tryCatch(
+    DatabaseConnector::querySql(
+      connection,
+      "SELECT vocabulary_version FROM omop_vocab.vocabulary WHERE vocabulary_id = 'None';"
+    )[[1]][1],
+    error = function(e) NA_character_
+  )
+  if (is.na(vocab_version)) vocab_version <- "unknown"
+  today <- format(Sys.Date(), "%Y-%m-%d")
+  id_label <- if (is.null(dataset_id)) "imported" else dataset_id  # --zip imports carry no registry id
+  cdm_source_row <- data.frame(
+    cdm_source_name                = paste0("Synthetic ", id_label, " (imported clinical tables)"),
+    cdm_source_abbreviation        = id_label,
+    cdm_holder                     = "Duke Vascular Informatics (synthetic)",
+    source_description             = "Synthetic Synthea-derived OMOP CDM; clinical tables only, vocabulary supplied locally.",
+    source_documentation_reference = "https://github.com/Duke-Vascular-Informatics",
+    cdm_etl_reference              = "https://github.com/OHDSI/ETL-Synthea",
+    source_release_date            = today,
+    cdm_release_date               = today,
+    cdm_version                    = "5.4",
+    cdm_version_concept_id         = 798878L,  # [vocab query] CDM: OMOP CDM Version 5.4.1
+    vocabulary_version             = vocab_version,
+    stringsAsFactors               = FALSE
+  )
+  DatabaseConnector::insertTable(
+    connection        = connection,
+    databaseSchema    = target_schema,
+    tableName         = "cdm_source",
+    data              = cdm_source_row,
+    dropTableIfExists = FALSE,
+    createTable       = FALSE,
+    progressBar       = FALSE
+  )
+  cat("[import_clinical_tables] Inserted a placeholder cdm_source row (the zip had none).\n")
 }
 
 cat(sprintf("\n[import_clinical_tables] Done. '%s' now has %d clinical tables loaded.\n", target_schema, length(csv_files)))

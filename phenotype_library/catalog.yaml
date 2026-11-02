@@ -33,6 +33,22 @@
 # --------------------------------
 #   ohdsi_pl_id       — integer PL phenotype ID, or null if not found / not checked
 #   ohdsi_pl_checked  — ISO date this entry was last searched in the PL, or null
+#   ohdsi_pl_links    — OPTIONAL list of the closest PL entries and how they compare
+#                       (added 2026-10-30; ohdsi_pl_id stays the single "best match"
+#                       and may be one of these). Each item: pl_id, pl_name, relation,
+#                       checked (ISO date), notes (concept-overlap evidence). relation:
+#                         equivalent       — concept sets match after descendant expansion
+#                                            (Jaccard >= ~0.95), differences listed in notes
+#                         near_equivalent  — substantial overlap, both sides add concepts
+#                         subset_of_pl     — ours is entirely (or ~all) inside the PL set
+#                         related          — same clinical area, deliberately different scope
+#                       decision / decision_reason / decision_date record the Rule 1 outcome
+#                       (adopt the published phenotype unless there is a clear analytic reason
+#                       not to): aligned | aligned_with_deviation | deviates, with the reason.
+#                       Overlap is a concept-set comparison on the dev vocabulary only; it
+#                       does not compare index logic, windows or inclusion rules.
+#                       CAUTION: PL status for these entries was "Pending" or "Pending peer
+#                       review" on 2026-10-30 — cite the PL ID, do not call it peer reviewed.
 #
 # All concept IDs without an explicit vocab_query_date are pending verification.
 # Never copy a concept_id from this file into study code without confirming

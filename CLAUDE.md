@@ -117,10 +117,15 @@ Rscript phenotype_library/scripts/check_pl.R "<clinical term>"
 # or browse: https://ohdsi.github.io/PhenotypeLibrary/articles/CohortDefinitionsInOhdsiPhenotypeLibrary.html
 ```
 
-If a match is found, record `ohdsi_pl_id` and `ohdsi_pl_checked` in
-`phenotype_library/catalog.yaml` and cite the phenotype in study documentation.
-This is "check and cite if found" — a local definition MAY still differ from
-a published PL phenotype.
+If a match is found, **use the published phenotype's concept set preferentially**:
+record `ohdsi_pl_id` and `ohdsi_pl_checked` in `phenotype_library/catalog.yaml`,
+cite the phenotype in study documentation, and align the local definition to it
+unless there is a clear analytic reason to deviate (e.g. a different clinical scope
+than the score item or study question). Record each outcome in the entry's
+`ohdsi_pl_links` list (`decision: aligned | aligned_with_deviation | deviates`, plus
+`decision_reason`). Library entries are often listed as "Pending" or "Pending peer
+review" (check `PhenotypeLibrary::getPhenotypeLog()$status`), so cite the ID and do
+not call an entry peer reviewed unless its status says so.
 
 **Tier 1b — label-tagged ATLAS cohorts/concept sets — AUTHORITATIVE**
 
@@ -334,6 +339,17 @@ GitHub repositories (e.g., HADES package source code, Book of OHDSI example scri
 - Skip comments in SQL files — SQL comments (`--`) are as important as R comments.
 
 ---
+
+## Working Directory
+
+Humans and coding agents both **work from the workspace root** (`/workspace` in
+the dev container) for workspace-level tools, using root-relative paths:
+`Rscript phenotype_library/scripts/lookup_catalog.R ...`, `Rscript synthetic_data/scripts/...`
+(`scripts/concept_lookup.R` ships in `synthea-omop-template`; run it from inside that folder).
+Do not use `../` paths for these — they only work from exactly one level down.
+Run a study's *own* scripts (e.g. `StrategusCodeToRun.R`, `workflow/NN_*.R`)
+from that study's folder, as its documentation says. Root-level runs also use the
+root `renv` library, which includes `PhenotypeLibrary` for the Tier 1a check.
 
 ## Architecture
 

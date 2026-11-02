@@ -36,8 +36,10 @@ SQL Server instance, point at it directly instead of re-running Synthea:
   it straight through, no code change needed.
 - **Strategus repos** (e.g. `my-study-prog`): build a read-only
   view-overlay schema with `Rscript synthetic_data/scripts/generate_overlay_schema.R
-  --source <schema> --target <new_overlay_schema_name>`, then set
-  `OMOP_CDM_SCHEMA_OVERRIDE=<new_overlay_schema_name>` in your `.env`.
+  --source <schema> --target <new_overlay_schema_name>`, then
+  uncomment and set `OMOP_CDM_SCHEMA_OVERRIDE=<new_overlay_schema_name>` in your
+  `.env` (it ships commented out; a blank value is treated as unset only by
+  templates that include the `envOr()` helper).
 
 This is a **same-machine-only** convenience — it works because your own SQL Server
 already has the schema populated. Track what's populated locally in
