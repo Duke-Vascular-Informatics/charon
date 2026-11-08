@@ -322,6 +322,26 @@ RAM** for Docker (12 GB minimum; the vocabulary load is killed silently below
 that). Claude Code installs itself in the container; add an Anthropic API key in
 `.env`.
 
+### Clone with the template submodules
+
+The four study templates (`synthea-omop-template`, `omop-etl-template`,
+`strategus-study-template`, `omop-report-template`) are git submodules. A plain
+`git clone` leaves those folders empty, and the dev container cannot build studies
+from them. Clone with:
+
+```bash
+git clone --recurse-submodules https://github.com/Duke-Vascular-Informatics/charon.git
+```
+
+If you already cloned without it, run this inside the folder:
+
+```bash
+git submodule update --init --recursive
+```
+
+Why submodules: each template is its own repo so that studies can pin a known version
+of it. The parent repo records only which version it points to.
+
 ## Where to go next
 
 Follow these in order:
@@ -452,9 +472,7 @@ concept IDs, codes, and names.
 
 ## Acknowledgments
 
-- The four template submodules this repo scaffolds from —
-  `synthea-omop-template`, `omop-etl-template`, `strategus-study-template`,
-  `omop-report-template` — and the broader [OHDSI](https://www.ohdsi.org/)
+- The four template repositories this workspace is built from (the git submodules described under *Clone with the template submodules*) — `synthea-omop-template`, `omop-etl-template`, `strategus-study-template`, `omop-report-template` — and the broader [OHDSI](https://www.ohdsi.org/)
   / [HADES](https://ohdsi.github.io/Hades/) ecosystem this workspace builds on.
 
 ### Early testers
